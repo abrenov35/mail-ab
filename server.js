@@ -3,12 +3,26 @@ const https = require("https");
 const app = express();
 app.use(express.json());
 
+let inbox = [];
+
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Content-Type");
-  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
   if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
+});
+
+app.post("/email", (req, res) => {
+  const email = req.body;
+  email.id = email.id || Date.now();
+  inbox.unshift(email);
+  if (inbox.length > 50) inbox = inbox.slice(0, 50);
+  res.json({ ok: true });
+});
+
+app.get("/emails", (req, res) => {
+  res.json(inbox);
 });
 
 app.post("/claude", (req, res) => {
