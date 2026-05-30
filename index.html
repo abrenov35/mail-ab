@@ -79,7 +79,7 @@ async function doAnalyze(email) {
 }
 
 async function doReply(email, ana, modifier, prev) {
-  const sys = "Tu es AB MAIL, expert en e-mails professionnels francais. Genere UNIQUEMENT le corps de la reponse, prete a copier. N'utilise JAMAIS le mot 'Cordialement' ni aucune de ses variantes (Bien cordialement, Tres cordialement). Utilise des formules de politesse alternatives comme 'Bien a vous', 'Bonne journee', 'Dans l'attente de votre retour'.";
+  const sys = "Tu es AB MAIL, expert en e-mails professionnels francais. Genere UNIQUEMENT le corps de la reponse, prete a copier. N'utilise JAMAIS le mot 'Cordialement' ni aucune de ses variantes (Bien cordialement, Tres cordialement). Utilise des formules de politesse alternatives comme 'Bien a vous', 'Bonne journee', 'Dans l'attente de votre retour'. N'inclus JAMAIS de signature (nom, prenom, poste, telephone, adresse, entreprise) car les signatures sont configurees automatiquement dans la messagerie.";
   const mmap = {shorter:"Raccourcis cette reponse",longer:"Developpe davantage",diplomatic:"Ton plus diplomatique",firm:"Ton plus ferme",commercial:"Angle commercial",technical:"Precisions techniques"};
   const content = (modifier&&prev)?(mmap[modifier]||modifier)+" :\n\n"+prev:"Redige une reponse professionnelle.\nDe: "+email.from+"\nObjet: "+email.subject+"\n\n"+email.body+"\n\nContexte: "+ana.category+" — "+ana.summary;
   return callClaude([{role:"user",content}],sys);
