@@ -6,7 +6,7 @@
 <title>AB RENOV MAIL</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-  :root { --navy:#162D49;--beige:#F3EAE2;--lavande:#A495C3;--muted:#8A9BAD;--border:#DDD5CA;--bgsoft:#EDE8E1; }
+  :root{--navy:#162D49;--beige:#F3EAE2;--lavande:#A495C3;--muted:#8A9BAD;--border:#DDD5CA;--bgsoft:#EDE8E1;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
   html,body{height:100%;background:var(--beige);font-family:'DM Sans',sans-serif;}
   button{-webkit-appearance:none;font-family:inherit;cursor:pointer;}
@@ -88,10 +88,15 @@ async function doReply(email, ana, modifier, prev) {
 async function loadEmails() {
   try {
     const r = await fetch(RAILWAY+"/emails");
-    const data = await r.json();
-    emails = data;
+    emails = await r.json();
     render();
   } catch(e) {}
+}
+
+function deleteEmail(id) {
+  emails = emails.filter(e => String(e.id) !== String(id));
+  fetch(RAILWAY+"/email/"+id, { method:"DELETE" });
+  render();
 }
 
 function render() {
@@ -107,7 +112,10 @@ function renderList() {
   const topRow = h("div",{style:{display:"flex",alignItems:"center",gap:"10px"}});
   const logo = h("div",{style:{width:"36px",height:"36px",background:C.white,borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif",fontWeight:"800",fontSize:"14px",color:C.navy,flexShrink:"0"}},"AB");
   const logoText = h("div",{});
-  logoText.append(h("div",{style:{fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif",fontWeight:"700",fontSize:"15px",color:C.white,letterSpacing:"2px"}},"RENOV MAIL"),h("div",{style:{fontSize:"9px",color:"rgba(255,255,255,0.4)",letterSpacing:"1.2px"}},"ASSISTANT IA"));
+  logoText.append(
+    h("div",{style:{fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif",fontWeight:"700",fontSize:"15px",color:C.white,letterSpacing:"2px"}},"RENOV MAIL"),
+    h("div",{style:{fontSize:"9px",color:"rgba(255,255,255,0.4)",letterSpacing:"1.2px"}},"ASSISTANT IA")
+  );
   topRow.append(logo,logoText); header.append(topRow);
   const label = h("div",{style:{padding:"14px 18px 6px",fontSize:"10px",fontWeight:"700",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",flexShrink:"0"}},"Boîte de réception — "+emails.length);
   const list = h("div",{style:{flex:"1",overflowY:"auto"}});
@@ -122,13 +130,13 @@ function renderList() {
       h("div",{style:{fontSize:"12px",color:C.muted,lineHeight:"1.45",marginBottom:"4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},e.subject),
       h("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},
         h("span",{style:{fontSize:"11px",color:C.muted}},new Date(e.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})),
-        ...(e.attachments&&e.attachments.length>0?[h("span",{style:{fontSize:"11px"}},"📎")]:[])
+        ...(e.attachments&&e.attachments.length>0?[h("span",{},"📎")]:[])
       )
     );
     const right = h("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:"0"}});
     right.append(h("span",{style:{fontSize:"11px",color:C.muted}},timeAgo(e.date)),h("span",{style:{fontSize:"18px",color:C.border,lineHeight:"1"}},"›"));
     inner.append(left,right); btn.append(inner);
-    const del = h("button",{style:{flexShrink:"0",width:"50px",background:"transparent",border:"none",borderLeft:"1px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"17px"},onclick:(ev)=>{ev.stopPropagation();deleteEmail(e.id);}}, "🗑");
+    const del = h("button",{style:{flexShrink:"0",width:"50px",background:"transparent",border:"none",borderLeft:"1px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"17px"},onclick:(ev)=>{ev.stopPropagation();deleteEmail(e.id);}},"🗑");
     del.addEventListener("mouseenter",()=>del.style.background="#FDECEA");
     del.addEventListener("mouseleave",()=>del.style.background="transparent");
     row.append(btn,del);
@@ -145,7 +153,10 @@ function renderDetail() {
   const topbar = h("div",{style:{background:C.navy,padding:"14px 16px",display:"flex",alignItems:"center",gap:"10px",flexShrink:"0"}});
   const backBtn = h("button",{style:{background:"none",border:"none",color:C.white,fontSize:"22px",cursor:"pointer",padding:"0",lineHeight:"1",flexShrink:"0"},onclick:()=>{screen="list";render();}},"‹");
   const titleWrap = h("div",{style:{flex:"1",minWidth:"0"}});
-  titleWrap.append(h("div",{style:{fontSize:"13px",fontWeight:"700",color:C.white,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},selected.subject),h("div",{style:{fontSize:"10px",color:"rgba(255,255,255,0.4)",marginTop:"2px"}},selected.fromName||selected.from));
+  titleWrap.append(
+    h("div",{style:{fontSize:"13px",fontWeight:"700",color:C.white,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},selected.subject),
+    h("div",{style:{fontSize:"10px",color:"rgba(255,255,255,0.4)",marginTop:"2px"}},selected.fromName||selected.from)
+  );
   const delBtn = h("button",{style:{background:"none",border:"none",color:"rgba(255,255,255,0.5)",fontSize:"17px",cursor:"pointer",padding:"0 0 0 4px",flexShrink:"0"},onclick:()=>{deleteEmail(selected.id);screen="list";render();}},"🗑");
   topbar.append(backBtn,titleWrap);
   if (analysis) topbar.append(h("span",{style:{flexShrink:"0",padding:"2px 8px",borderRadius:"4px",fontSize:"9px",fontWeight:"700",background:urg.bg,color:urg.color,letterSpacing:"0.8px"}},urg.label));
@@ -167,7 +178,10 @@ function renderDetail() {
     if (loading) p.append(shimmerBlock(5));
     else if (analysis) {
       const badges = h("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap"}});
-      badges.append(h("span",{style:{padding:"3px 11px",borderRadius:"20px",fontSize:"11px",fontWeight:"700",background:C.navy,color:C.white}},analysis.category),h("span",{style:{padding:"3px 11px",borderRadius:"20px",fontSize:"11px",fontWeight:"700",background:urg.bg,color:urg.color}},urg.label));
+      badges.append(
+        h("span",{style:{padding:"3px 11px",borderRadius:"20px",fontSize:"11px",fontWeight:"700",background:C.navy,color:C.white}},analysis.category),
+        h("span",{style:{padding:"3px 11px",borderRadius:"20px",fontSize:"11px",fontWeight:"700",background:urg.bg,color:urg.color}},urg.label)
+      );
       p.append(badges,fieldBlock("Résumé",analysis.summary),fieldBlock("Ce qui est demandé",analysis.demand),fieldBlock("Action attendue",analysis.action));
     } else p.append(h("div",{style:{color:C.muted,fontSize:"13px"}},"Analyse en cours…"));
     content.append(p);
@@ -208,8 +222,6 @@ function fieldBlock(lbl,val,isPre) {
   wrap.append(card);
   return wrap;
 }
-
-function deleteEmail(id) { emails=emails.filter(e=>e.id!==id); render(); }
 
 function openEmail(email) {
   selected=email; analysis=null; reply=""; activeMod=null; copied=false; activeTab="reply";
