@@ -81,7 +81,7 @@ function shimmerBlock(n) {
 }
 
 async function callClaude(messages, system) {
-  const r = await fetch("https://mail-ab-production-bde8.up.railway.app", {
+  const r = await fetch("https://mail-ab-production-bde8.up.railway.app/claude", {
     method:"POST", headers:{"Content-Type":"application/json"},
     body:JSON.stringify({system,messages})
 });
