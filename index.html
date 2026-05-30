@@ -81,10 +81,10 @@ function shimmerBlock(n) {
 }
 
 async function callClaude(messages, system) {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+  const r = await fetch("https://mail-ab-production.up.railway.app/claude", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system,messages})
-  });
+    body:JSON.stringify({system,messages})
+});
   const d = await r.json();
   return (d.content||[]).map(b=>b.text||"").join("");
 }
