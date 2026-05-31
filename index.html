@@ -81,7 +81,7 @@ async function doAnalyze(email) {
 }
 
 async function doReply(email, ana, modifier, prev) {
-  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Regles ABSOLUES :\n- JAMAIS de signature (ni nom, prenom, poste, tel, entreprise)\n- JAMAIS 'Cordialement' ni variantes — utilise 'Bien a vous', 'Bonne journee', 'Dans l'attente de votre retour'\n- JAMAIS mielleux, JAMAIS de compliments inutiles\n- JAMAIS citer ou nommer des personnes — reste impersonnel : 'nous traitons', 'une equipe intervient', 'une intervention sera planifiee'\n- JAMAIS donner une date precise de ta propre initiative — meme si le mail en demande une. Toujours repondre : 'une date vous sera communiquee rapidement' ou 'dans les meilleurs delais'\n- Aller dans le sens du client mais avec mesure, sans s'engager excessivement\n- Style : professionnel, direct, commercial, bankable\n- Si des consignes sont fournies, les appliquer rigoureusement AVANT de generer la reponse\n- Genere UNIQUEMENT le corps de la reponse pret a copier";
+  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Regles ABSOLUES SANS EXCEPTION :\n- JAMAIS de signature\n- JAMAIS 'Cordialement' ni variantes\n- JAMAIS mielleux ni compliments\n- JAMAIS de nom de personne — impersonnel uniquement : 'nous traitons', 'une equipe', 'une intervention'\n- INTERDICTION TOTALE ET ABSOLUE de tout element temporel : aucune date, aucun jour (lundi, mardi...), aucune semaine, aucun mois, aucun delai chiffre (48h, 24h, J+3, sous X jours...), aucune expression comme 'semaine prochaine', 'rapidement', 'sous peu'. REMPLACER SYSTEMATIQUEMENT par : 'une date vous sera communiquee' ou 'nous revenons vers vous'. SI TU METS UNE DATE OU UN DELAI TU ENFREINS UNE REGLE CRITIQUE.\n- Aller dans le sens du client avec mesure\n- Style : professionnel, direct, commercial, bankable\n- Appliquer les consignes fournies EN PRIORITE avant de generer\n- Genere UNIQUEMENT le corps de la reponse pret a copier";
   const mmap = {shorter:"Raccourcis cette reponse",longer:"Developpe davantage",diplomatic:"Ton plus diplomatique",firm:"Ton plus ferme",commercial:"Angle commercial",technical:"Precisions techniques"};
   const content = (modifier&&prev)
     ? (mmap[modifier]||modifier)+" :\n\n"+prev
@@ -242,11 +242,7 @@ function renderDetail() {
   }
   const bottomBar = h("div",{style:{padding:"16px 16px 20px",background:C.white,borderTop:"2px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"9px"}});
   if (activeTab==="reply") {
-    const textarea = h("textarea",{style:{width:"100%",padding:"10px 12px",borderRadius:"8px",border:"none",fontSize:"12px",color:C.white,fontFamily:"'DM Sans',sans-serif",background:C.navy,resize:"none",outline:"none",lineHeight:"1.5"},placeholder:"Consigne pour réorienter la réponse…",rows:"3"});
-    textarea.style.setProperty("--placeholder-color","rgba(255,255,255,0.4)");
-    const style = document.createElement("style");
-    style.textContent = "textarea::placeholder{color:rgba(255,255,255,0.45)!important;}";
-    document.head.append(style);
+    const textarea = h("textarea",{style:{width:"100%",padding:"10px 12px",borderRadius:"8px",border:"1px solid "+C.border,fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:"#E4DDD6",resize:"none",outline:"none",lineHeight:"1.5"},placeholder:"Consigne pour réorienter la réponse…",rows:"3"});
     textarea.value = userInstruction;
     textarea.addEventListener("input", e => { userInstruction = e.target.value; });
     const regenBtn = h("button",{style:{width:"100%",padding:"12px",borderRadius:"8px",fontSize:"13px",fontWeight:"600",background:C.bgsoft,border:"1px solid "+C.border,color:C.navy,cursor:(replyLoading||loading)?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},onclick:()=>{if(!replyLoading&&!loading)regenerate();}});
