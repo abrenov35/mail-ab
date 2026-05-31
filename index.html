@@ -23,10 +23,11 @@
 const RAILWAY = "https://mail-ab-production-bde8.up.railway.app";
 const C = {navy:"#162D49",beige:"#F3EAE2",lavande:"#A495C3",white:"#FFFFFF",muted:"#8A9BAD",border:"#DDD5CA",bgsoft:"#EDE8E1"};
 const URG = {critique:{color:"#C0392B",bg:"#FDECEA",label:"CRITIQUE"},haute:{color:"#B7591A",bg:"#FEF3E2",label:"HAUTE"},moderee:{color:"#162D49",bg:"#E8EFF6",label:"MODÉRÉE"},faible:{color:"#2E7D52",bg:"#EAF2EA",label:"FAIBLE"}};
-const MODS = ["Plus court","Plus développé","Plus diplomatique","Plus ferme","Plus commercial","Plus technique"];
-const MOD_IDS = ["shorter","longer","diplomatic","firm","commercial","technical"];
+const MODS = ["Plus court","Plus développé","Plus commercial","Plus technique"];
+const MOD_IDS = ["shorter","longer","commercial","technical"];
 
 let emails = [];
+let savedIds = JSON.parse(localStorage.getItem("ab_saved")||"[]");
 let screen = "list";
 let selected = null;
 let analysis = null;
@@ -80,7 +81,7 @@ async function doAnalyze(email) {
 }
 
 async function doReply(email, ana, modifier, prev) {
-  const sys = "Tu es AB MAIL, expert en e-mails professionnels francais. Genere UNIQUEMENT le corps de la reponse, prete a copier. N'utilise JAMAIS le mot 'Cordialement' ni aucune de ses variantes (Bien cordialement, Tres cordialement). Utilise des formules de politesse alternatives comme 'Bien a vous', 'Bonne journee', 'Dans l'attente de votre retour'. N'inclus JAMAIS de signature (nom, prenom, poste, telephone, adresse, entreprise) car les signatures sont configurees automatiquement dans la messagerie.";
+  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Ton style : professionnel, direct, commercial, bankable. JAMAIS mielleux, JAMAIS de compliments inutiles, JAMAIS de 'Cordialement' ni variantes. Formules de politesse : 'Bien a vous', 'Bonne journee', 'Dans l'attente de votre retour'. JAMAIS de signature. Genere UNIQUEMENT le corps de la reponse pret a copier.";
   const mmap = {shorter:"Raccourcis cette reponse",longer:"Developpe davantage",diplomatic:"Ton plus diplomatique",firm:"Ton plus ferme",commercial:"Angle commercial",technical:"Precisions techniques"};
   const content = (modifier&&prev)?(mmap[modifier]||modifier)+" :\n\n"+prev:"Redige une reponse professionnelle.\nDe: "+email.from+"\nObjet: "+email.subject+"\n\n"+email.body+"\n\nContexte: "+ana.category+" — "+ana.summary+(userInstruction?"\n\nConsigne supplementaire: "+userInstruction:"");
   return callClaude([{role:"user",content}],sys);
@@ -137,10 +138,20 @@ function renderList() {
     const right = h("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:"0"}});
     right.append(h("span",{style:{fontSize:"11px",color:C.muted}},timeAgo(e.date)),h("span",{style:{fontSize:"18px",color:C.border,lineHeight:"1"}},"›"));
     inner.append(left,right); btn.append(inner);
+    const isSaved = savedIds.includes(String(e.id));
+    const saveBtn = h("button",{style:{flexShrink:"0",width:"36px",background:"transparent",border:"none",borderLeft:"1px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"15px",color:isSaved?"#B7591A":C.muted},title:isSaved?"Retirer":"À traiter"},isSaved?"🔖":"🔖");
+    saveBtn.style.opacity = isSaved?"1":"0.35";
+    saveBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      if(isSaved){ savedIds = savedIds.filter(x=>x!==String(e.id)); }
+      else { savedIds.push(String(e.id)); }
+      localStorage.setItem("ab_saved", JSON.stringify(savedIds));
+      render();
+    };
     const del = h("button",{style:{flexShrink:"0",width:"50px",background:"transparent",border:"none",borderLeft:"1px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"17px"},onclick:(ev)=>{ev.stopPropagation();deleteEmail(e.id);}},"🗑");
     del.addEventListener("mouseenter",()=>del.style.background="#FDECEA");
     del.addEventListener("mouseleave",()=>del.style.background="transparent");
-    row.append(btn,del);
+    row.append(btn,saveBtn,del);
     list.append(row);
   });
   wrap.append(header,label,list);
@@ -194,17 +205,17 @@ function renderDetail() {
     if (selected) {
       const suggestedSubject = (analysis && analysis.subject) ? analysis.subject : selected.subject;
       let subjectCopied = false;
-      const subjectBox = h("div",{style:{display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",marginBottom:"12px",borderLeft:"3px solid "+C.lavande,background:C.white,borderRadius:"0 8px 8px 0"}});
-      const subjectText = h("div",{style:{flex:"1",fontSize:"12px",color:C.navy,fontWeight:"600",minWidth:"0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},loading?"…":suggestedSubject);
-      const copySubBtn = h("button",{style:{flexShrink:"0",background:C.bgsoft,border:"1px solid "+C.border,borderRadius:"6px",padding:"4px 9px",fontSize:"11px",fontWeight:"600",color:C.navy,cursor:"pointer",whiteSpace:"nowrap"}},loading?"…":"Copier");
+      const subjectBox = h("div",{style:{display:"flex",alignItems:"center",gap:"10px",padding:"11px 14px",marginBottom:"12px",background:C.navy,borderRadius:"8px"}});
+      const subjectText = h("div",{style:{flex:"1",fontSize:"12px",color:C.white,fontWeight:"600",minWidth:"0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},loading?"…":suggestedSubject);
+      const copySubBtn = h("button",{style:{flexShrink:"0",background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:"6px",padding:"4px 9px",fontSize:"11px",fontWeight:"600",color:C.white,cursor:"pointer",whiteSpace:"nowrap"}},loading?"…":"Copier");
       copySubBtn.onclick = () => {
         navigator.clipboard.writeText(suggestedSubject).catch(()=>{});
         copySubBtn.textContent = "✓";
         copySubBtn.style.background = "#EAF2EA";
         copySubBtn.style.color = "#2E7D52";
-        setTimeout(()=>{ copySubBtn.textContent = "Copier"; copySubBtn.style.background = C.bgsoft; copySubBtn.style.color = C.navy; }, 2000);
+        setTimeout(()=>{ copySubBtn.textContent = "Copier"; copySubBtn.style.background = "rgba(255,255,255,0.15)"; copySubBtn.style.color = C.white; }, 2000);
       };
-      const regenSubBtn = h("button",{style:{flexShrink:"0",background:C.bgsoft,border:"1px solid "+C.border,borderRadius:"6px",padding:"4px 8px",fontSize:"13px",color:C.navy,cursor:loading?"not-allowed":"pointer",lineHeight:"1"},title:"Régénérer l'objet"},"↻");
+      const regenSubBtn = h("button",{style:{flexShrink:"0",background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:"6px",padding:"4px 8px",fontSize:"13px",color:C.white,cursor:loading?"not-allowed":"pointer",lineHeight:"1"},title:"Régénérer l'objet"},"↻");
       regenSubBtn.onclick = () => {
         if(loading||!analysis) return;
         subjectText.textContent = "…";
