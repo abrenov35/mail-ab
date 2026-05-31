@@ -73,7 +73,7 @@ async function callClaude(messages, system) {
 }
 
 async function doAnalyze(email) {
-  const sys = 'Tu es AB MAIL. Reponds UNIQUEMENT en JSON valide sans markdown.\nFormat: {"category":"string","summary":"string","demand":"string","urgency":"faible|moderee|haute|critique","action":"string","subject":"string (objet de reponse suggere, concis et professionnel, SANS aucun prefixe comme Re:, Fwd:, TR:, Ref:, Objet: ou equivalent)"}';
+  const sys = 'Tu es AB MAIL. Reponds UNIQUEMENT en JSON valide sans markdown.\nFormat: {"category":"string (2 mots max)","summary":"string (max 10 mots)","demand":"string (max 8 mots)","urgency":"faible|moderee|haute|critique","action":"string (max 5 mots)","subject":"string (objet de reponse, 6 mots max, SANS prefixe Re: Fwd: TR:)"}';
   const txt = await callClaude([{role:"user",content:"De: "+email.from+"\nObjet: "+email.subject+"\n\n"+email.body}],sys);
   try { return JSON.parse(txt.replace(/```json|```/g,"").trim()); }
   catch { return {category:"Échange",summary:"Analyse indisponible",demand:"Voir le mail",urgency:"moderee",action:"Répondre",subject:email.subject}; }
