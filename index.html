@@ -36,6 +36,7 @@ let replyLoading = false;
 let activeMod = null;
 let copied = false;
 let activeTab = "reply";
+let userInstruction = "";
 
 function timeAgo(d) {
   const s = (Date.now() - new Date(d)) / 1000;
@@ -81,7 +82,7 @@ async function doAnalyze(email) {
 async function doReply(email, ana, modifier, prev) {
   const sys = "Tu es AB MAIL, expert en e-mails professionnels francais. Genere UNIQUEMENT le corps de la reponse, prete a copier. N'utilise JAMAIS le mot 'Cordialement' ni aucune de ses variantes (Bien cordialement, Tres cordialement). Utilise des formules de politesse alternatives comme 'Bien a vous', 'Bonne journee', 'Dans l'attente de votre retour'. N'inclus JAMAIS de signature (nom, prenom, poste, telephone, adresse, entreprise) car les signatures sont configurees automatiquement dans la messagerie.";
   const mmap = {shorter:"Raccourcis cette reponse",longer:"Developpe davantage",diplomatic:"Ton plus diplomatique",firm:"Ton plus ferme",commercial:"Angle commercial",technical:"Precisions techniques"};
-  const content = (modifier&&prev)?(mmap[modifier]||modifier)+" :\n\n"+prev:"Redige une reponse professionnelle.\nDe: "+email.from+"\nObjet: "+email.subject+"\n\n"+email.body+"\n\nContexte: "+ana.category+" — "+ana.summary;
+  const content = (modifier&&prev)?(mmap[modifier]||modifier)+" :\n\n"+prev:"Redige une reponse professionnelle.\nDe: "+email.from+"\nObjet: "+email.subject+"\n\n"+email.body+"\n\nContexte: "+ana.category+" — "+ana.summary+(userInstruction?"\n\nConsigne supplementaire: "+userInstruction:"");
   return callClaude([{role:"user",content}],sys);
 }
 
@@ -203,7 +204,13 @@ function renderDetail() {
         copySubBtn.style.color = "#2E7D52";
         setTimeout(()=>{ copySubBtn.textContent = "Copier"; copySubBtn.style.background = C.bgsoft; copySubBtn.style.color = C.navy; }, 2000);
       };
-      subjectBox.append(subjectText, copySubBtn);
+      const regenSubBtn = h("button",{style:{flexShrink:"0",background:C.bgsoft,border:"1px solid "+C.border,borderRadius:"6px",padding:"4px 8px",fontSize:"13px",color:C.navy,cursor:loading?"not-allowed":"pointer",lineHeight:"1"},title:"Régénérer l'objet"},"↻");
+      regenSubBtn.onclick = () => {
+        if(loading||!analysis) return;
+        subjectText.textContent = "…";
+        doAnalyze(selected).then(ana => { analysis = ana; render(); });
+      };
+      subjectBox.append(subjectText, copySubBtn, regenSubBtn);
       p.append(subjectBox);
     }
     const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px",marginBottom:"14px"}});
@@ -221,10 +228,13 @@ function renderDetail() {
   }
   const bottomBar = h("div",{style:{padding:"16px 16px 20px",background:C.white,borderTop:"2px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"9px"}});
   if (activeTab==="reply") {
+    const textarea = h("textarea",{style:{width:"100%",padding:"10px 12px",borderRadius:"8px",border:"1px solid "+C.border,fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.bgsoft,resize:"none",outline:"none",lineHeight:"1.5",marginBottom:"0"},placeholder:"Consigne pour réorienter la réponse…",rows:"3"});
+    textarea.value = userInstruction;
+    textarea.addEventListener("input", e => { userInstruction = e.target.value; });
     const regenBtn = h("button",{style:{width:"100%",padding:"12px",borderRadius:"8px",fontSize:"13px",fontWeight:"600",background:C.bgsoft,border:"1px solid "+C.border,color:C.navy,cursor:(replyLoading||loading)?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},onclick:()=>{if(!replyLoading&&!loading)regenerate();}});
     regenBtn.append(h("span",{style:{display:"inline-block",animation:replyLoading?"spin 1s linear infinite":"none"}},"↻"),"Régénérer une réponse");
     const copyBtn = h("button",{style:{width:"100%",padding:"14px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:copied?"#2D7D52":(!reply||replyLoading)?C.bgsoft:C.navy,border:"none",color:(!reply||replyLoading)?C.muted:C.white,cursor:(!reply||replyLoading)?"not-allowed":"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},onclick:()=>{if(reply&&!replyLoading)doCopy();}},copied?"✓ COPIÉ !":"COPIER LA RÉPONSE");
-    bottomBar.append(regenBtn,copyBtn,h("div",{style:{fontSize:"10px",color:C.muted,textAlign:"center"}},"Collez dans votre messagerie et envoyez"));
+    bottomBar.append(textarea,regenBtn,copyBtn,h("div",{style:{fontSize:"10px",color:C.muted,textAlign:"center"}},"Collez dans votre messagerie et envoyez"));
   }
   wrap.append(topbar,tabs,content,bottomBar);
   return wrap;
