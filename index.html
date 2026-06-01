@@ -145,11 +145,7 @@ const REGLES_MAIL = `=== REGLES ===
 async function doAtelierGuide(texte, type, mode) {
   const isSms = type==="sms";
   const sys = "Tu es AB MAIL, assistant expert en communication commerciale pour AB RENOV. Tu aides a produire des messages parfaits en posant les bonnes questions AVANT de rediger.";
-  const content = "Analyse ce "+(isSms?"SMS":"mail")+" que je veux "+(mode==="repondre"?"traiter (repondre)":"reformuler")+" :
-
-"+texte+"
-
-Pose-moi 1 ou 2 questions COURTES et CIBLEES pour bien comprendre ce que je veux comme reponse. Questions simples, directes. Pas de bla-bla. Format : une question par ligne, commencant par un numero.";
+  const content = "Analyse ce "+(isSms?"SMS":"mail")+" que je veux "+(mode==="repondre"?"traiter (repondre)":"reformuler")+" :\n\n"+texte+"\n\nPose-moi 1 ou 2 questions COURTES et CIBLEES pour bien comprendre ce que je veux comme reponse. Questions simples, directes. Pas de bla-bla. Format : une question par ligne, commencant par un numero.";
   return callClaude([{role:"user",content}],sys);
 }
 
