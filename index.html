@@ -116,23 +116,22 @@ async function doReply(email, ana, modifier, prev) {
 }
 
 // ── ATELIER PROMPTS ────────────────────────────────────────────────────────────
-const REGLES_SMS = `=== REGLES (sauf si une INSTRUCTION PRIORITAIRE les contredit) ===
+const REGLES_SMS = `=== REGLES ===
 - JAMAIS de signature
 - JAMAIS "Cordialement" ou variantes
 - JAMAIS de compliments ou formules mielleuses
 - JAMAIS de nom de personne
-- Par defaut : pas de date ni delai. Remplacer par "on vous recontacte" ou "une date sera fixee". EXCEPTION : si une INSTRUCTION PRIORITAIRE donne une date ou information specifique, utilise-la
-- Style : court, direct, professionnel, naturel SMS
-- 1 a 3 lignes MAXIMUM
+- PAS de date ni delai sauf si l'INSTRUCTION PRIORITAIRE en donne une explicitement — dans ce cas tu DOIS l'utiliser mot pour mot
+- Style : court, direct, professionnel, naturel SMS — 1 a 3 lignes MAX
 - Genere UNIQUEMENT le corps du message
 === FIN DES REGLES ===`;
 
-const REGLES_MAIL = `=== REGLES (sauf si une INSTRUCTION PRIORITAIRE les contredit) ===
+const REGLES_MAIL = `=== REGLES ===
 - JAMAIS de signature
 - JAMAIS "Cordialement" ou variantes
 - JAMAIS de compliments ou formules mielleuses
 - JAMAIS de nom de personne — utiliser : "nous traitons", "une equipe", "une intervention"
-- Par defaut : pas de date ni delai. Remplacer par "une date vous sera communiquee" ou "nous revenons vers vous". EXCEPTION : si une INSTRUCTION PRIORITAIRE donne une date ou information specifique, utilise-la
+- PAS de date ni delai sauf si l'INSTRUCTION PRIORITAIRE en donne une explicitement — dans ce cas tu DOIS l'utiliser mot pour mot
 - Style : professionnel, direct, commercial, bankable
 - INTERDIT : ecrire l'objet du mail dans la reponse
 - INTERDIT : proposer un devis ou engagement financier
@@ -459,22 +458,35 @@ function renderAtelier() {
     resultWrap.append(box);
   }
 
-  // BOTTOM — Consigne + Régénérer + Copier
+  // BOTTOM — Consigne + Régénérer + Copier + Nouveau
   const bottomBar = h("div",{style:{padding:"10px 14px 14px",background:C.white,borderTop:"1px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"8px"}});
 
   if (currentResult && !atelierLoading) {
     const consigneTA = h("textarea",{
       style:{width:"100%",padding:"8px 12px",borderRadius:"8px",border:"2px solid "+C.navy,fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.5"},
-      placeholder:"Consigne : plus court, plus commercial, ajouter un détail…",
+      placeholder:"Consigne : plus court, ajouter 'le 1er juin', plus commercial…",
       rows:"2"
     });
     consigneTA.value = atelierConsigne;
+    // Fix clavier : onChange sans re-render
     consigneTA.addEventListener("input", e => { atelierConsigne = e.target.value; });
+    consigneTA.addEventListener("keydown", e => { e.stopPropagation(); });
 
+    const btnRow2 = h("div",{style:{display:"flex",gap:"8px"}});
     const regenBtn = h("button",{
-      style:{width:"100%",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},
+      style:{flex:"1",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},
       onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
-    },h("span",{style:{display:"inline-block",animation:atelierLoading?"spin 1s linear infinite":"none"}},"↻"),"Régénérer une proposition");
+    },h("span",{style:{display:"inline-block",animation:atelierLoading?"spin 1s linear infinite":"none"}},"↻"),"Régénérer");
+
+    const newBtn = h("button",{
+      style:{height:"38px",padding:"0 14px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:"pointer",whiteSpace:"nowrap"},
+      onclick:()=>{
+        atelierInput=""; atelierResult=""; atelierHistory=[];
+        atelierHistoryIndex=-1; atelierActiveMod=null; atelierConsigne="";
+        render();
+      }
+    },"✦ Nouveau");
+    btnRow2.append(regenBtn, newBtn);
 
     const copyBtn = h("button",{
       style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:atelierCopied?C.green:C.navy,border:"none",color:C.white,cursor:"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
@@ -485,7 +497,11 @@ function renderAtelier() {
       }
     },atelierCopied?"✓ COPIÉ !":"COPIER LE RÉSULTAT");
 
-    bottomBar.append(consigneTA, regenBtn, copyBtn);
+    bottomBar.append(consigneTA, btnRow2, copyBtn);
+  } else if (!atelierLoading && atelierHistory.length===0) {
+    // Pas encore de résultat — pas de barre
+  } else if (atelierLoading) {
+    // Chargement — rien
   }
 
   wrap.append(typeRow, modeRow, inputWrap, btnRow, resultWrap, bottomBar);
