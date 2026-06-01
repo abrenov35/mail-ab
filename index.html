@@ -389,21 +389,22 @@ function renderAtelier() {
   consigneTA.addEventListener("input", e => { atelierConsigne = e.target.value; });
   consigneWrap.append(consigneTA);
 
-  // BOUTONS — Générer + Régénérer
+  // BOUTON LANCER — visible uniquement si pas encore de résultat
   const actionLabel = atelierMode==="repondre" ? "GÉNÉRER LA RÉPONSE" : "REFORMULER";
   const btnRow = h("div",{style:{display:"flex",gap:"8px",margin:"10px 16px 0",flexShrink:"0"}});
 
-  const launchBtn = h("button",{
-    style:{flex:"1",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?"#C8BFB5":C.lavande,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.5px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
-    onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
-  });
-  if (atelierLoading) {
-    launchBtn.append(h("span",{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"↻"),"Traitement…");
-  } else {
-    launchBtn.textContent = atelierHistory.length>0 ? "↻ RÉGÉNÉRER" : actionLabel;
+  if (atelierHistory.length===0) {
+    const launchBtn = h("button",{
+      style:{flex:"1",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?"#C8BFB5":C.lavande,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.5px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
+      onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
+    });
+    if (atelierLoading) {
+      launchBtn.append(h("span",{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"↻"),"Traitement…");
+    } else {
+      launchBtn.textContent = actionLabel;
+    }
+    btnRow.append(launchBtn);
   }
-
-  btnRow.append(launchBtn);
 
   // RÉSULTAT
   const resultWrap = h("div",{style:{flex:"1",overflowY:"auto",padding:"12px 16px 0",display:"flex",flexDirection:"column",gap:"10px"}});
