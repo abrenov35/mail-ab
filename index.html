@@ -145,10 +145,13 @@ async function doAtelierRepondre(texte, type, modifier, prev) {
   const regles = isSms ? REGLES_SMS : REGLES_MAIL;
   const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu dois IMPERATIVEMENT respecter les regles qui te seront rappelees dans chaque message.";
   const mmap = {shorter:"Raccourcis cette reponse (garde les regles)",longer:"Developpe davantage (garde les regles)",commercial:"Angle plus commercial (garde les regles)",technical:"Precisions techniques (garde les regles)"};
-  const consigne = atelierConsigne ? "\n\n--- CONSIGNE UTILISATEUR (priorite absolue) ---\n"+atelierConsigne+"\n---" : "";
-  const content = (modifier&&prev)
-    ? regles+"\n\nTache : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev+consigne
-    : regles+"\n\nTache : Redige une reponse professionnelle a ce "+(isSms?"SMS":"mail")+".\n\nTexte original :\n"+texte+consigne;
+  const consigne = atelierConsigne
+    ? "\n\n!!! INSTRUCTION PRIORITAIRE — OBLIGATOIRE — APPLIQUE EN PREMIER AVANT TOUT !!!\n"+atelierConsigne+"\n!!! FIN INSTRUCTION PRIORITAIRE !!!"
+    : "";
+  const content = consigne
+    + "\n\n" + regles
+    + "\n\nTache : Redige une reponse professionnelle a ce "+(isSms?"SMS":"mail")+"."
+    + (modifier&&prev ? "\n\nApplique aussi : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev : "\n\nTexte original :\n"+texte);
   return callClaude([{role:"user",content}],sys);
 }
 
@@ -156,11 +159,14 @@ async function doAtelierReformuler(texte, type, modifier, prev) {
   const isSms = type==="sms";
   const regles = isSms ? REGLES_SMS : REGLES_MAIL;
   const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu dois IMPERATIVEMENT respecter les regles qui te seront rappelees dans chaque message.";
-  const mmap = {shorter:"Raccourcis ce texte (garde les regles)",longer:"Developpe davantage (garde les regles)",commercial:"Angle plus commercial (garde les regles)",technical:"Plus technique et precis (garde les regles)"};
-  const consigne = atelierConsigne ? "\n\n--- CONSIGNE UTILISATEUR (priorite absolue) ---\n"+atelierConsigne+"\n---" : "";
-  const content = (modifier&&prev)
-    ? regles+"\n\nTache : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev+consigne
-    : regles+"\n\nTache : Reformule ce "+(isSms?"SMS":"mail")+" pour le rendre plus professionnel, direct et percutant. Garde le sens exact.\n\nTexte original :\n"+texte+consigne;
+  const mmap = {shorter:"Raccourcis ce texte",longer:"Developpe davantage",commercial:"Angle plus commercial",technical:"Plus technique et precis"};
+  const consigne = atelierConsigne
+    ? "\n\n!!! INSTRUCTION PRIORITAIRE — OBLIGATOIRE — APPLIQUE EN PREMIER AVANT TOUT !!!\n"+atelierConsigne+"\n!!! FIN INSTRUCTION PRIORITAIRE !!!"
+    : "";
+  const content = consigne
+    + "\n\n" + regles
+    + "\n\nTache : Reformule ce "+(isSms?"SMS":"mail")+" pour le rendre plus professionnel, direct et percutant. Garde le sens exact."
+    + (modifier&&prev ? "\n\nApplique aussi : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev : "\n\nTexte original :\n"+texte);
   return callClaude([{role:"user",content}],sys);
 }
 
