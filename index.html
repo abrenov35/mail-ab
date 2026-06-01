@@ -119,28 +119,9 @@ async function doReply(email, ana, modifier, prev) {
 }
 
 // ── ATELIER PROMPTS ────────────────────────────────────────────────────────────
-const REGLES_SMS = `=== REGLES ===
-- JAMAIS de signature
-- JAMAIS "Cordialement" ou variantes
-- JAMAIS de compliments ou formules mielleuses
-- JAMAIS de nom de personne
-- PAS de date ni delai sauf si l'INSTRUCTION PRIORITAIRE en donne une explicitement — dans ce cas tu DOIS l'utiliser mot pour mot
-- Style : court, direct, professionnel, naturel SMS — 1 a 3 lignes MAX
-- Genere UNIQUEMENT le corps du message
-=== FIN DES REGLES ===`;
+const REGLES_SMS = "=== REGLES ===\n- JAMAIS de signature\n- JAMAIS \"Cordialement\" ou variantes\n- JAMAIS de compliments ou formules mielleuses\n- JAMAIS de nom de personne\n- PAS de date ni delai sauf si l'INSTRUCTION PRIORITAIRE en donne une explicitement — dans ce cas tu DOIS l'utiliser mot pour mot\n- Style : court, direct, professionnel, naturel SMS — 1 a 3 lignes MAX\n- Genere UNIQUEMENT le corps du message\n=== FIN DES REGLES ===";
 
-const REGLES_MAIL = `=== REGLES ===
-- JAMAIS de signature
-- JAMAIS "Cordialement" ou variantes
-- JAMAIS de compliments ou formules mielleuses
-- JAMAIS de nom de personne — utiliser : "nous traitons", "une equipe", "une intervention"
-- PAS de date ni delai sauf si l'INSTRUCTION PRIORITAIRE en donne une explicitement — dans ce cas tu DOIS l'utiliser mot pour mot
-- Style : professionnel, direct, commercial, bankable
-- INTERDIT : ecrire l'objet du mail dans la reponse
-- INTERDIT : proposer un devis ou engagement financier
-- Par defaut COURT (3-5 lignes max)
-- Genere UNIQUEMENT le corps de la reponse
-=== FIN DES REGLES ===`;
+const REGLES_MAIL = "=== REGLES ===\n- JAMAIS de signature\n- JAMAIS \"Cordialement\" ou variantes\n- JAMAIS de compliments ou formules mielleuses\n- JAMAIS de nom de personne — utiliser : 'nous traitons', 'une equipe', 'une intervention'\n- PAS de date ni delai sauf si l'INSTRUCTION PRIORITAIRE en donne une explicitement — dans ce cas tu DOIS l'utiliser mot pour mot\n- Style : professionnel, direct, commercial, bankable\n- INTERDIT : ecrire l'objet du mail dans la reponse\n- INTERDIT : proposer un devis ou engagement financier\n- Par defaut COURT (3-5 lignes max)\n- Genere UNIQUEMENT le corps de la reponse\n=== FIN DES REGLES ===";
 
 async function doAtelierGuide(texte, type, mode) {
   const isSms = type==="sms";
@@ -419,7 +400,7 @@ function renderAtelier() {
     const isActive = atelierMode===m;
     modeRow.append(h("button",{
       style:{flex:"1",padding:"9px",borderRadius:"9px",fontSize:"12px",fontWeight:"700",background:isActive?C.lavande:C.bgsoft,border:"2px solid "+(isActive?C.lavandeDark:C.border),color:isActive?C.white:C.navy,cursor:"pointer",transition:"all 0.15s"},
-      onclick:()=>{atelierMode=m;atelierResult="";atelierHistory=[];atelierHistoryIndex=-1;atelierActiveMod=null;render();}
+      onclick:()=>{atelierMode=m;atelierResult="";atelierHistory=[];atelierHistoryIndex=-1;atelierActiveMod=null;atelierGuideStep="idle";atelierQuestions="";atelierAnswers="";render();}
     },lbl));
   });
 
