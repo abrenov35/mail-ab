@@ -6,22 +6,27 @@
 <title>AB RENOV MAIL</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-  :root{--navy:#162D49;--beige:#F3EAE2;--lavande:#A495C3;--muted:#8A9BAD;--border:#DDD5CA;--bgsoft:#EDE8E1;}
+  :root{--navy:#162D49;--beige:#F3EAE2;--lavande:#A495C3;--muted:#6B7A8D;--border:#C8BFB5;--bgsoft:#EDE8E1;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
-  html,body{height:100%;background:var(--beige);font-family:'DM Sans',sans-serif;}
+  html,body{height:100%;background:#E8DFD6;font-family:'DM Sans',sans-serif;}
   button{-webkit-appearance:none;font-family:inherit;cursor:pointer;}
   @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-  .shimmer-line{height:11px;border-radius:6px;background:linear-gradient(90deg,var(--border),var(--bgsoft),var(--border));background-size:200% 100%;animation:shimmer 1.5s infinite;}
+  .shimmer-line{height:11px;border-radius:6px;background:linear-gradient(90deg,#D5CCC4,#EDE8E1,#D5CCC4);background-size:200% 100%;animation:shimmer 1.5s infinite;}
   ::-webkit-scrollbar{display:none;}
-  #app{max-width:480px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:var(--beige);overflow:hidden;}
+  #app{max-width:480px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:#FFFFFF;overflow:hidden;}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
 const RAILWAY = "https://mail-ab-production-bde8.up.railway.app";
-const C = {navy:"#162D49",beige:"#F3EAE2",lavande:"#A495C3",lavandeLight:"#EDE9F4",lavandeDark:"#7B6BA8",white:"#FFFFFF",muted:"#8A9BAD",border:"#DDD5CA",bgsoft:"#EDE8E1"};
+const C = {
+  navy:"#162D49", beige:"#F3EAE2", lavande:"#A495C3",
+  lavandeLight:"#EDE9F4", lavandeDark:"#7B6BA8",
+  white:"#FFFFFF", muted:"#6B7A8D", border:"#C8BFB5",
+  bgsoft:"#F5F0EB", bgsofter:"#EDE8E1", green:"#2D7D52"
+};
 const URG = {
   critique:{color:"#C0392B",bg:"#FDECEA",label:"CRITIQUE"},
   haute:{color:"#B7591A",bg:"#FEF3E2",label:"HAUTE"},
@@ -31,10 +36,8 @@ const URG = {
 const MODS = ["Plus court","Plus développé","Plus commercial","Plus technique"];
 const MOD_IDS = ["shorter","longer","commercial","technical"];
 
-// ── STATE ─────────────────────────────────────────────────────────────────────
-let mainTab = "inbox"; // "inbox" | "atelier"
-
-// inbox state
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let mainTab = "inbox";
 let emails = [];
 let savedIds = JSON.parse(localStorage.getItem("ab_saved")||"[]");
 let screen = "list";
@@ -48,19 +51,18 @@ let copied = false;
 let activeTab = "reply";
 let userInstruction = "";
 
-// atelier state
-let atelierType = "mail"; // "mail" | "sms"
-let atelierMode = "repondre"; // "repondre" | "reformuler"
+let atelierType = "mail";
+let atelierMode = "repondre";
 let atelierInput = "";
-let atelierHistory = []; // toutes les propositions
-let atelierHistoryIndex = -1; // index courant
+let atelierHistory = [];
+let atelierHistoryIndex = -1;
 let atelierResult = "";
 let atelierLoading = false;
 let atelierCopied = false;
 let atelierActiveMod = null;
 let atelierConsigne = "";
 
-// ── UTILS ─────────────────────────────────────────────────────────────────────
+// ── UTILS ──────────────────────────────────────────────────────────────────────
 function timeAgo(d) {
   const s = (Date.now() - new Date(d)) / 1000;
   if (s < 3600) return Math.round(s/60)+"m";
@@ -86,6 +88,7 @@ function shimmerBlock(n) {
   return wrap;
 }
 
+// ── CLAUDE API ─────────────────────────────────────────────────────────────────
 async function callClaude(messages, system) {
   const r = await fetch(RAILWAY+"/claude", {
     method:"POST", headers:{"Content-Type":"application/json"},
@@ -103,43 +106,43 @@ async function doAnalyze(email) {
 }
 
 async function doReply(email, ana, modifier, prev) {
-  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Regles ABSOLUES SANS EXCEPTION :\n- JAMAIS de signature\n- JAMAIS 'Cordialement' ni variantes\n- JAMAIS mielleux ni compliments\n- JAMAIS de nom de personne — impersonnel uniquement : 'nous traitons', 'une equipe', 'une intervention'\n- INTERDICTION TOTALE ET ABSOLUE de tout element temporel : aucune date, aucun jour (lundi, mardi...), aucune semaine, aucun mois, aucun delai chiffre (48h, 24h, J+3, sous X jours...), aucune expression comme 'semaine prochaine', 'rapidement', 'sous peu'. REMPLACER SYSTEMATIQUEMENT par : 'une date vous sera communiquee' ou 'nous revenons vers vous'. SI TU METS UNE DATE OU UN DELAI TU ENFREINS UNE REGLE CRITIQUE.\n- Aller dans le sens du client avec mesure\n- Style : professionnel, direct, commercial, bankable\n- Appliquer les consignes fournies EN PRIORITE avant de generer\n- INTERDICTION ABSOLUE d'ecrire l'objet ou le sujet du mail dans la reponse, ni en debut, ni en gras, ni sous aucune forme\n- INTERDICTION ABSOLUE de proposer, mentionner ou suggerer un devis, une estimation, un chiffrage ou tout engagement financier — meme si le mail en fait la demande. Repondre uniquement que 'nous revenons vers vous' ou 'un echange sera organise'\n- Par defaut, la reponse doit etre COURTE (3-5 lignes maximum), directe et commerciale. Ne developpe que si une consigne le demande explicitement\n- Genere UNIQUEMENT le corps de la reponse pret a copier";
+  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation.\nREGLES ABSOLUES — RELIS-LES AVANT CHAQUE GENERATION :\n- JAMAIS de signature\n- JAMAIS 'Cordialement' ni variantes\n- JAMAIS mielleux ni compliments\n- JAMAIS de nom de personne — impersonnel : 'nous traitons', 'une equipe', 'une intervention'\n- INTERDIT : toute date, jour, semaine, mois, delai chiffre (48h, 24h, J+3...), 'semaine prochaine', 'rapidement', 'sous peu'. Remplacer par : 'une date vous sera communiquee' ou 'nous revenons vers vous'\n- Style : professionnel, direct, commercial, bankable\n- INTERDIT : ecrire l'objet du mail dans la reponse\n- INTERDIT : proposer un devis, estimation ou engagement financier. Repondre : 'nous revenons vers vous' ou 'un echange sera organise'\n- Par defaut COURT (3-5 lignes). Developpe seulement si consigne explicite\n- Genere UNIQUEMENT le corps de la reponse";
   const mmap = {shorter:"Raccourcis cette reponse",longer:"Developpe davantage",diplomatic:"Ton plus diplomatique",firm:"Ton plus ferme",commercial:"Angle commercial",technical:"Precisions techniques"};
   const content = (modifier&&prev)
-    ? (mmap[modifier]||modifier)+" :\n\n"+prev
-    : "Redige une reponse professionnelle.\nDe: "+email.from+"\nObjet: "+email.subject+"\n\n"+email.body+"\n\nContexte: "+ana.category+" — "+ana.summary
-      +(userInstruction?"\n\nCONSIGNES A APPLIQUER EN PRIORITE :\n"+userInstruction:"");
+    ? "RELIS LES REGLES SYSTEME. Puis : "+(mmap[modifier]||modifier)+" :\n\n"+prev
+    : "RELIS LES REGLES SYSTEME. Redige une reponse.\nDe: "+email.from+"\nObjet: "+email.subject+"\n\n"+email.body+"\n\nContexte: "+ana.category+" — "+ana.summary
+      +(userInstruction?"\n\nCONSIGNES PRIORITAIRES :\n"+userInstruction:"");
   return callClaude([{role:"user",content}],sys);
 }
 
-// ── ATELIER CLAUDE CALLS ──────────────────────────────────────────────────────
+// ── ATELIER PROMPTS ────────────────────────────────────────────────────────────
+const REGLES_BASE = "RELIS CES REGLES AVANT CHAQUE GENERATION ET REGENERATION, SANS EXCEPTION :\n";
+
 async function doAtelierRepondre(texte, type, modifier, prev) {
-  const isSms = type === "sms";
-  const reglesBase = "AVANT DE GENERER OU REGENERER, RELIS SYSTEMATIQUEMENT ET APPLIQUE TOUTES LES REGLES SUIVANTES SANS EXCEPTION :\n";
-  const sys = isSms
-    ? reglesBase+"Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu generes des reponses a des SMS professionnels. Regles ABSOLUES :\n- JAMAIS de signature\n- JAMAIS 'Cordialement' ni variantes\n- JAMAIS mielleux ni compliments\n- JAMAIS de nom de personne\n- INTERDICTION de tout element temporel (dates, delais, jours...). Remplacer par 'on vous recontacte' ou 'une date sera fixee'\n- Style : court, direct, professionnel, ton SMS naturel mais pro\n- 1 a 3 lignes maximum\n- Genere UNIQUEMENT le corps de la reponse\n- A CHAQUE REGENERATION : relis ces regles et verifie que tu les respectes toutes avant de repondre"
-    : reglesBase+"Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Regles ABSOLUES SANS EXCEPTION :\n- JAMAIS de signature\n- JAMAIS 'Cordialement' ni variantes\n- JAMAIS mielleux ni compliments\n- JAMAIS de nom de personne — impersonnel uniquement\n- INTERDICTION TOTALE de tout element temporel. Remplacer par 'une date vous sera communiquee' ou 'nous revenons vers vous'\n- Style : professionnel, direct, commercial, bankable\n- INTERDICTION ABSOLUE d'ecrire l'objet dans la reponse\n- INTERDICTION de proposer un devis ou engagement financier\n- Par defaut COURT (3-5 lignes)\n- Genere UNIQUEMENT le corps de la reponse\n- A CHAQUE REGENERATION : relis ces regles et verifie que tu les respectes toutes avant de repondre";
+  const isSms = type==="sms";
+  const sys = REGLES_BASE + (isSms
+    ? "Tu es AB MAIL, assistant commercial AB RENOV. Reponses SMS professionnelles.\n- JAMAIS signature, 'Cordialement', compliments, nom de personne\n- INTERDIT : dates, delais, jours. Remplacer par 'on vous recontacte' ou 'une date sera fixee'\n- Style : court, direct, pro, naturel SMS\n- 1 a 3 lignes MAX\n- Corps de reponse uniquement"
+    : "Tu es AB MAIL, assistant commercial AB RENOV. Emails professionnels.\n- JAMAIS signature, 'Cordialement', compliments, nom de personne\n- INTERDIT : dates, delais, jours, semaines, mois, expressions temporelles. Remplacer par 'une date vous sera communiquee' ou 'nous revenons vers vous'\n- Style : professionnel, direct, commercial, bankable\n- INTERDIT : ecrire l'objet dans la reponse\n- INTERDIT : proposer devis ou engagement financier\n- Par defaut COURT (3-5 lignes)\n- Corps de reponse uniquement");
   const mmap = {shorter:"Raccourcis cette reponse",longer:"Developpe davantage",commercial:"Angle commercial",technical:"Precisions techniques"};
   const content = (modifier&&prev)
-    ? "RELIS LES CONSIGNES DU SYSTEME. Puis applique : "+(mmap[modifier]||modifier)+" :\n\n"+prev
-    : "RELIS LES CONSIGNES DU SYSTEME. Puis redige une reponse professionnelle a ce "+(isSms?"SMS":"mail")+" :\n\n"+texte;
+    ? "RELIS LES REGLES. Applique : "+(mmap[modifier]||modifier)+" :\n\n"+prev+(atelierConsigne?"\n\nCONSIGNE SUPPLEMENTAIRE : "+atelierConsigne:"")
+    : "RELIS LES REGLES. Redige une reponse a ce "+(isSms?"SMS":"mail")+" :\n\n"+texte+(atelierConsigne?"\n\nCONSIGNE : "+atelierConsigne:"");
   return callClaude([{role:"user",content}],sys);
 }
 
 async function doAtelierReformuler(texte, type, modifier, prev) {
-  const isSms = type === "sms";
-  const reglesBase = "AVANT DE GENERER OU REGENERER, RELIS SYSTEMATIQUEMENT ET APPLIQUE TOUTES LES REGLES SUIVANTES SANS EXCEPTION :\n";
-  const sys = isSms
-    ? reglesBase+"Tu es AB MAIL, assistant commercial pour AB RENOV. Tu reformules des SMS pour les rendre plus professionnels, clairs et directs. Regles :\n- Garder le sens exact du message original\n- Ton professionnel mais naturel pour un SMS\n- Court et direct\n- JAMAIS de signature\n- JAMAIS d'element temporel (dates, delais)\n- Genere UNIQUEMENT le texte reformule\n- A CHAQUE REGENERATION : relis ces regles et verifie que tu les respectes toutes avant de repondre"
-    : reglesBase+"Tu es AB MAIL, assistant commercial pour AB RENOV. Tu reformules des emails pour les rendre plus professionnels, percutants et commerciaux. Regles :\n- Garder le sens exact du message original\n- Ton professionnel, direct, commercial, bankable\n- JAMAIS de signature\n- JAMAIS d'element temporel (dates, delais)\n- JAMAIS mielleux ni compliments\n- Genere UNIQUEMENT le texte reformule\n- A CHAQUE REGENERATION : relis ces regles et verifie que tu les respectes toutes avant de repondre";
+  const isSms = type==="sms";
+  const sys = REGLES_BASE + (isSms
+    ? "Tu es AB MAIL, assistant commercial AB RENOV. Reformule des SMS en plus professionnel.\n- Garde le sens exact\n- Ton pro mais naturel SMS\n- Court et direct\n- JAMAIS signature, elements temporels\n- Texte reformule uniquement"
+    : "Tu es AB MAIL, assistant commercial AB RENOV. Reformule des emails en plus professionnel.\n- Garde le sens exact\n- Ton professionnel, direct, commercial, bankable\n- JAMAIS signature, elements temporels, compliments\n- Texte reformule uniquement");
   const mmap = {shorter:"Raccourcis ce texte",longer:"Developpe davantage",commercial:"Angle plus commercial",technical:"Plus technique et precis"};
   const content = (modifier&&prev)
-    ? "RELIS LES CONSIGNES DU SYSTEME. Puis applique : "+(mmap[modifier]||modifier)+" :\n\n"+prev
-    : "RELIS LES CONSIGNES DU SYSTEME. Puis reformule ce "+(isSms?"SMS":"mail")+" :\n\n"+texte;
+    ? "RELIS LES REGLES. Applique : "+(mmap[modifier]||modifier)+" :\n\n"+prev+(atelierConsigne?"\n\nCONSIGNE SUPPLEMENTAIRE : "+atelierConsigne:"")
+    : "RELIS LES REGLES. Reformule ce "+(isSms?"SMS":"mail")+" :\n\n"+texte+(atelierConsigne?"\n\nCONSIGNE : "+atelierConsigne:"");
   return callClaude([{role:"user",content}],sys);
 }
 
-// ── DATA ──────────────────────────────────────────────────────────────────────
+// ── DATA ───────────────────────────────────────────────────────────────────────
 async function loadEmails() {
   try {
     const r = await fetch(RAILWAY+"/emails");
@@ -154,7 +157,7 @@ function deleteEmail(id) {
   render();
 }
 
-// ── RENDER ────────────────────────────────────────────────────────────────────
+// ── RENDER ─────────────────────────────────────────────────────────────────────
 function render() {
   const app = document.getElementById("app");
   app.innerHTML = "";
@@ -164,9 +167,9 @@ function render() {
 function renderApp() {
   const wrap = h("div",{style:{display:"flex",flexDirection:"column",height:"100%"}});
 
-  // MAIN HEADER
+  // HEADER
   const header = h("div",{style:{background:C.navy,flexShrink:"0"}});
-  const headerInner = h("div",{style:{padding:"16px 18px 12px",display:"flex",alignItems:"center",gap:"10px"}});
+  const headerInner = h("div",{style:{padding:"16px 18px 12px",display:"flex",alignItems:"center"}});
   const logo = h("div",{style:{flex:"1"}});
   logo.append(
     h("div",{style:{fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif",fontWeight:"800",fontSize:"17px",color:C.white,letterSpacing:"1px",lineHeight:"1"}},"AB RENOV 35"),
@@ -176,18 +179,17 @@ function renderApp() {
   header.append(headerInner);
   header.append(h("div",{style:{height:"3px",background:"linear-gradient(90deg,"+C.lavande+","+C.lavandeDark+","+C.navy+")"}}));
 
-  // MAIN TABS
-  const mainTabs = h("div",{style:{display:"flex",background:C.white,borderBottom:"2px solid "+C.border,flexShrink:"0"}});
+  // ONGLETS PRINCIPAUX
+  const mainTabs = h("div",{style:{display:"flex",background:C.white,borderBottom:"1px solid "+C.border,flexShrink:"0"}});
   [["inbox","📬 Boîte mail"],["atelier","✏️ Atelier"]].forEach(([id,lbl])=>{
     const isActive = mainTab===id;
     mainTabs.append(h("button",{
-      style:{flex:"1",padding:"13px 4px",border:"none",background:isActive?C.navy:C.white,color:isActive?C.white:C.muted,fontSize:"13px",fontWeight:"700",cursor:"pointer",borderBottom:isActive?"2px solid "+C.lavande:"2px solid transparent",transition:"all 0.15s"},
+      style:{flex:"1",padding:"13px 4px",border:"none",background:isActive?C.navy:C.white,color:isActive?C.white:C.muted,fontSize:"13px",fontWeight:"700",cursor:"pointer",borderBottom:isActive?"3px solid "+C.lavande:"3px solid transparent",transition:"all 0.15s"},
       onclick:()=>{mainTab=id;render();}
     },lbl));
   });
 
   const body = h("div",{style:{flex:"1",overflow:"hidden",display:"flex",flexDirection:"column"}});
-
   if (mainTab==="inbox") {
     if (screen==="list") body.append(renderList());
     else body.append(renderDetail());
@@ -199,42 +201,41 @@ function renderApp() {
   return wrap;
 }
 
-// ── INBOX ─────────────────────────────────────────────────────────────────────
+// ── INBOX LIST ─────────────────────────────────────────────────────────────────
 function renderList() {
-  const wrap = h("div",{style:{display:"flex",flexDirection:"column",height:"100%"}});
-  const label = h("div",{style:{padding:"14px 18px 6px",fontSize:"10px",fontWeight:"700",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",flexShrink:"0"}},"Boîte de réception — "+emails.length);
-  const list = h("div",{style:{flex:"1",overflowY:"auto"}});
+  const wrap = h("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:C.white}});
+  const label = h("div",{style:{padding:"12px 18px 8px",fontSize:"10px",fontWeight:"700",color:C.muted,textTransform:"uppercase",letterSpacing:"1.5px",flexShrink:"0",borderBottom:"1px solid "+C.border}},"Boîte de réception — "+emails.length);
+  const list = h("div",{style:{flex:"1",overflowY:"auto",background:C.white}});
   if (emails.length===0) list.append(h("div",{style:{padding:"52px 18px",textAlign:"center",color:C.muted,fontSize:"13px"}},"Aucun message"));
 
   emails.forEach(e => {
     const row = h("div",{style:{display:"flex",alignItems:"stretch",borderBottom:"1px solid "+C.border,background:C.white}});
-    const btn = h("button",{style:{flex:"1",textAlign:"left",background:"transparent",border:"none",padding:"16px 10px 16px 18px",cursor:"pointer",minWidth:"0"},onclick:()=>openEmail(e)});
-    const leftAccent = h("div",{style:{width:"3px",background:C.lavande,borderRadius:"2px",flexShrink:"0",margin:"8px 0"}});
+    const leftAccent = h("div",{style:{width:"3px",background:C.lavande,flexShrink:"0"}});
+    const btn = h("button",{style:{flex:"1",textAlign:"left",background:"transparent",border:"none",padding:"14px 10px 14px 14px",cursor:"pointer",minWidth:"0"},onclick:()=>openEmail(e)});
     const inner = h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"}});
     const left = h("div",{style:{flex:"1",minWidth:"0"}});
     left.append(
-      h("div",{style:{fontSize:"14px",fontWeight:"700",color:C.navy,marginBottom:"3px"}},e.fromName||e.from),
-      h("div",{style:{fontSize:"12px",color:C.muted,lineHeight:"1.45",marginBottom:"4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},e.subject),
+      h("div",{style:{fontSize:"14px",fontWeight:"700",color:C.navy,marginBottom:"2px"}},e.fromName||e.from),
+      h("div",{style:{fontSize:"12px",color:C.muted,marginBottom:"4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},e.subject),
       h("div",{style:{display:"flex",gap:"8px",alignItems:"center"}},
         h("span",{style:{fontSize:"11px",color:C.muted}},new Date(e.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})),
         ...(e.attachments&&e.attachments.length>0?[h("span",{},"📎")]:[])
       )
     );
     const right = h("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:"0"}});
-    right.append(h("span",{style:{fontSize:"11px",color:C.muted}},timeAgo(e.date)),h("span",{style:{fontSize:"18px",color:C.lavande,lineHeight:"1"}},"›"));
+    right.append(h("span",{style:{fontSize:"11px",color:C.muted}},timeAgo(e.date)),h("span",{style:{fontSize:"18px",color:C.lavande}},"›"));
     inner.append(left,right);
     btn.append(inner);
+
     const isSaved = savedIds.includes(String(e.id));
-    const saveBtn = h("button",{style:{flexShrink:"0",width:"36px",background:"transparent",border:"none",borderLeft:"1px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"15px",color:isSaved?C.lavande:C.muted},title:isSaved?"Retirer":"À traiter"},"🔖");
-    saveBtn.style.opacity = isSaved?"1":"0.35";
-    saveBtn.onclick = (ev) => {
+    const saveBtn = h("button",{style:{flexShrink:"0",width:"36px",background:"transparent",border:"none",borderLeft:"1px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"15px",opacity:isSaved?"1":"0.3"},onclick:(ev)=>{
       ev.stopPropagation();
       if(isSaved){ savedIds = savedIds.filter(x=>x!==String(e.id)); }
       else { savedIds.push(String(e.id)); }
       localStorage.setItem("ab_saved", JSON.stringify(savedIds));
       render();
-    };
-    const del = h("button",{style:{flexShrink:"0",width:"50px",background:"transparent",border:"none",borderLeft:"1px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"17px"},onclick:(ev)=>{ev.stopPropagation();deleteEmail(e.id);}},"🗑");
+    }},"🔖");
+    const del = h("button",{style:{flexShrink:"0",width:"44px",background:"transparent",border:"none",borderLeft:"1px solid "+C.border,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px"},onclick:(ev)=>{ev.stopPropagation();deleteEmail(e.id);}},"🗑");
     del.addEventListener("mouseenter",()=>del.style.background="#FDECEA");
     del.addEventListener("mouseleave",()=>del.style.background="transparent");
     row.append(leftAccent,btn,saveBtn,del);
@@ -244,14 +245,16 @@ function renderList() {
   return wrap;
 }
 
+// ── INBOX DETAIL ───────────────────────────────────────────────────────────────
 function renderDetail() {
-  const wrap = h("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:C.beige}});
+  const wrap = h("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:C.white}});
   const urgKey = analysis?analysis.urgency:"moderee";
   const urg = URG[urgKey]||URG.moderee;
 
+  // Topbar
   const topbar = h("div",{style:{background:C.navy,flexShrink:"0"}});
-  const topbarInner = h("div",{style:{padding:"14px 16px",display:"flex",alignItems:"center",gap:"10px"}});
-  const backBtn = h("button",{style:{background:"rgba(255,255,255,0.12)",border:"none",cursor:"pointer",padding:"7px",lineHeight:"0",flexShrink:"0",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"},onclick:()=>{screen="list";render();}});
+  const topbarInner = h("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:"10px"}});
+  const backBtn = h("button",{style:{background:"rgba(255,255,255,0.15)",border:"none",cursor:"pointer",padding:"7px",lineHeight:"0",flexShrink:"0",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"},onclick:()=>{screen="list";render();}});
   const arrow = document.createElementNS("http://www.w3.org/2000/svg","svg");
   arrow.setAttribute("width","18");arrow.setAttribute("height","18");arrow.setAttribute("viewBox","0 0 24 24");arrow.setAttribute("fill","none");arrow.setAttribute("stroke","white");arrow.setAttribute("stroke-width","2.5");arrow.setAttribute("stroke-linecap","round");arrow.setAttribute("stroke-linejoin","round");
   const arrowPath = document.createElementNS("http://www.w3.org/2000/svg","polyline");arrowPath.setAttribute("points","15 18 9 12 15 6");
@@ -259,23 +262,24 @@ function renderDetail() {
   const titleWrap = h("div",{style:{flex:"1",minWidth:"0"}});
   titleWrap.append(
     h("div",{style:{fontSize:"13px",fontWeight:"700",color:C.white,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},selected.subject),
-    h("div",{style:{fontSize:"10px",color:"rgba(255,255,255,0.4)",marginTop:"2px"}},selected.fromName||selected.from)
+    h("div",{style:{fontSize:"10px",color:"rgba(255,255,255,0.5)",marginTop:"2px"}},selected.fromName||selected.from)
   );
   topbarInner.append(backBtn,titleWrap);
-  if (analysis) topbarInner.append(h("span",{style:{flexShrink:"0",padding:"2px 8px",borderRadius:"4px",fontSize:"9px",fontWeight:"700",background:urg.bg,color:urg.color,letterSpacing:"0.8px"}},urg.label));
+  if (analysis) topbarInner.append(h("span",{style:{flexShrink:"0",padding:"3px 9px",borderRadius:"5px",fontSize:"9px",fontWeight:"700",background:urg.bg,color:urg.color,letterSpacing:"0.8px"}},urg.label));
   topbar.append(topbarInner);
   topbar.append(h("div",{style:{height:"3px",background:"linear-gradient(90deg,"+C.lavande+","+C.navy+")"}}));
 
+  // Onglets
   const tabs = h("div",{style:{display:"flex",background:C.white,borderBottom:"1px solid "+C.border,flexShrink:"0"}});
   [["mail","✉ Mail"],["analyse","🔍 Analyse"],["reply","✍ Réponse"]].forEach(([id,lbl])=>{
     const isActive = activeTab===id;
-    tabs.append(h("button",{style:{flex:"1",padding:"12px 4px",border:"none",background:isActive?C.beige:C.white,color:isActive?C.navy:C.muted,fontSize:"12px",fontWeight:"600",cursor:"pointer",borderBottom:isActive?"2px solid "+C.navy:"2px solid transparent",transition:"all 0.15s"},onclick:()=>{activeTab=id;render();}},lbl));
+    tabs.append(h("button",{style:{flex:"1",padding:"11px 4px",border:"none",background:C.white,color:isActive?C.navy:C.muted,fontSize:"12px",fontWeight:"600",cursor:"pointer",borderBottom:isActive?"2px solid "+C.navy:"2px solid transparent",transition:"all 0.15s"},onclick:()=>{activeTab=id;render();}},lbl));
   });
 
-  const content = h("div",{style:{flex:"1",overflow:"hidden",display:"flex",flexDirection:"column"}});
+  const content = h("div",{style:{flex:"1",overflow:"hidden",display:"flex",flexDirection:"column",background:C.bgsoft}});
 
   if (activeTab==="mail") {
-    const p = h("div",{style:{padding:"18px 16px",display:"flex",flexDirection:"column",gap:"12px",overflowY:"auto",height:"100%"}});
+    const p = h("div",{style:{padding:"16px",display:"flex",flexDirection:"column",gap:"12px",overflowY:"auto",height:"100%"}});
     p.append(fieldBlock("De",selected.from));
     if (selected.attachments&&selected.attachments.length>0) p.append(fieldBlock("Pièce(s) jointe(s)","📎 "+selected.attachments.join(", ")));
     p.append(fieldBlock("Contenu",selected.body,true));
@@ -283,7 +287,7 @@ function renderDetail() {
   }
 
   if (activeTab==="analyse") {
-    const p = h("div",{style:{padding:"18px 16px",display:"flex",flexDirection:"column",gap:"12px",overflowY:"auto",height:"100%"}});
+    const p = h("div",{style:{padding:"16px",display:"flex",flexDirection:"column",gap:"12px",overflowY:"auto",height:"100%"}});
     if (loading) p.append(shimmerBlock(5));
     else if (analysis) {
       const badges = h("div",{style:{display:"flex",gap:"8px",flexWrap:"wrap"}});
@@ -292,48 +296,48 @@ function renderDetail() {
         h("span",{style:{padding:"3px 11px",borderRadius:"20px",fontSize:"11px",fontWeight:"700",background:urg.bg,color:urg.color}},urg.label)
       );
       p.append(badges,fieldBlock("Résumé",analysis.summary),fieldBlock("Ce qui est demandé",analysis.demand),fieldBlock("Action attendue",analysis.action));
-    } else p.append(h("div",{style:{color:C.muted,fontSize:"13px"}},"Analyse en cours…"));
+    }
     content.append(p);
   }
 
   if (activeTab==="reply") {
-    const p = h("div",{style:{padding:"12px 16px 12px",display:"flex",flexDirection:"column",gap:"10px",overflowY:"auto",flex:"1"}});
+    const p = h("div",{style:{padding:"12px 14px",display:"flex",flexDirection:"column",gap:"10px",overflowY:"auto",flex:"1"}});
     if (selected) {
-      const suggestedSubject = (analysis && analysis.subject) ? analysis.subject : selected.subject;
-      const subjectBox = h("div",{style:{display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",background:C.navy,borderRadius:"8px",flexShrink:"0"}});
+      const suggestedSubject = (analysis&&analysis.subject)?analysis.subject:selected.subject;
+      const subjectBox = h("div",{style:{display:"flex",alignItems:"center",gap:"8px",padding:"10px 14px",background:C.navy,borderRadius:"8px",flexShrink:"0"}});
       const subjectText = h("div",{style:{flex:"1",fontSize:"12px",color:C.white,fontWeight:"600",minWidth:"0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},loading?"…":suggestedSubject);
       const copySubBtn = h("button",{style:{flexShrink:"0",background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"6px",padding:"4px 9px",fontSize:"11px",fontWeight:"600",color:C.white,cursor:"pointer",whiteSpace:"nowrap"}},"Copier");
       copySubBtn.onclick = () => {
         navigator.clipboard.writeText(suggestedSubject).catch(()=>{});
-        copySubBtn.textContent = "✓"; copySubBtn.style.background="#2E7D52";
-        setTimeout(()=>{ copySubBtn.textContent="Copier"; copySubBtn.style.background="rgba(255,255,255,0.15)"; }, 2000);
+        copySubBtn.textContent="✓"; copySubBtn.style.background="#2E7D52";
+        setTimeout(()=>{ copySubBtn.textContent="Copier"; copySubBtn.style.background="rgba(255,255,255,0.15)"; },2000);
       };
-      const regenSubBtn = h("button",{style:{flexShrink:"0",background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"6px",padding:"4px 8px",fontSize:"13px",color:C.white,cursor:loading?"not-allowed":"pointer",lineHeight:"1"},title:"Régénérer l'objet"},"↻");
-      regenSubBtn.onclick = () => { if(loading||!analysis) return; subjectText.textContent="…"; doAnalyze(selected).then(ana=>{ analysis=ana; render(); }); };
-      subjectBox.append(subjectText, copySubBtn, regenSubBtn);
+      subjectBox.append(subjectText, copySubBtn);
       p.append(subjectBox);
     }
-    const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px",flexShrink:"0"}});
+    // Boutons modif
+    const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px",flexShrink:"0"}});
     MODS.forEach((lbl,i)=>{
       const id=MOD_IDS[i],isActive=activeMod===id,disabled=replyLoading||loading||!reply;
-      grid.append(h("button",{style:{padding:"0 4px",borderRadius:"7px",fontSize:"11px",fontWeight:"600",background:isActive?C.lavande:C.bgsoft,border:"1px solid "+(isActive?C.lavande:"#C8BFB5"),color:isActive?C.white:C.navy,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.5:1,transition:"all 0.15s",textAlign:"center",height:"32px"},onclick:()=>{if(!disabled)applyMod(id);}},lbl));
+      grid.append(h("button",{style:{padding:"0 4px",borderRadius:"7px",fontSize:"11px",fontWeight:"600",background:isActive?C.lavande:C.white,border:"1.5px solid "+(isActive?C.lavande:C.border),color:isActive?C.white:C.navy,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,height:"34px"},onclick:()=>{if(!disabled)applyMod(id);}},lbl));
     });
-    const replyBox = h("div",{style:{background:C.white,borderRadius:"10px",border:"1.5px solid #C8BFB5",padding:"14px 14px"}});
+    const replyBox = h("div",{style:{background:C.white,borderRadius:"10px",border:"1px solid "+C.border,padding:"14px"}});
     if (replyLoading) replyBox.append(shimmerBlock(6));
-    else if (reply) replyBox.append(h("pre",{style:{fontSize:"13px",lineHeight:"1.85",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},reply));
+    else if (reply) replyBox.append(h("pre",{style:{fontSize:"13px",lineHeight:"1.8",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},reply));
     else replyBox.append(h("div",{style:{color:C.muted,fontSize:"13px"}},"Analyse en cours…"));
     p.append(grid,replyBox);
     content.append(p);
   }
 
-  const bottomBar = h("div",{style:{padding:"10px 16px 16px",background:C.white,borderTop:"2px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"6px"}});
+  // Barre du bas
+  const bottomBar = h("div",{style:{padding:"10px 14px 14px",background:C.white,borderTop:"1px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"8px"}});
   if (activeTab==="reply") {
-    const textarea = h("textarea",{style:{width:"100%",padding:"8px 12px",borderRadius:"8px",border:"1.5px solid #C8BFB5",fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:"#EAE4DC",resize:"none",outline:"none",lineHeight:"1.5",display:"block"},placeholder:"Consigne pour réorienter la réponse…",rows:"2"});
+    const textarea = h("textarea",{style:{width:"100%",padding:"8px 12px",borderRadius:"8px",border:"1.5px solid "+C.border,fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.bgsoft,resize:"none",outline:"none",lineHeight:"1.5"},placeholder:"Consigne pour réorienter la réponse…",rows:"2"});
     textarea.value = userInstruction;
     textarea.addEventListener("input", e => { userInstruction = e.target.value; });
-    const regenBtn = h("button",{style:{width:"100%",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:"#EAE4DC",border:"1.5px solid #C8BFB5",color:C.navy,cursor:(replyLoading||loading)?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},onclick:()=>{if(!replyLoading&&!loading)regenerate();}});
-    regenBtn.append(h("span",{style:{display:"inline-block",animation:replyLoading?"spin 1s linear infinite":"none"}},"↻"),"Régénérer une réponse");
-    const copyBtn = h("button",{style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:copied?"#2D7D52":(!reply||replyLoading)?"#C8BFB5":C.lavande,border:"none",color:(!reply||replyLoading)?"#8A7F75":C.white,cursor:(!reply||replyLoading)?"not-allowed":"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},onclick:()=>{if(reply&&!replyLoading)doCopy();}},copied?"✓ COPIÉ !":"COPIER LA RÉPONSE");
+    const regenBtn = h("button",{style:{width:"100%",height:"36px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:(replyLoading||loading)?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},onclick:()=>{if(!replyLoading&&!loading)regenerate();}});
+    regenBtn.append(h("span",{style:{display:"inline-block",animation:replyLoading?"spin 1s linear infinite":"none"}},"↻"),"Régénérer");
+    const copyBtn = h("button",{style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:copied?C.green:(!reply||replyLoading)?C.border:C.navy,border:"none",color:(!reply||replyLoading)?"#8A7F75":C.white,cursor:(!reply||replyLoading)?"not-allowed":"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},onclick:()=>{if(reply&&!replyLoading)doCopy();}},copied?"✓ COPIÉ !":"COPIER LA RÉPONSE");
     bottomBar.append(textarea,regenBtn,copyBtn);
   }
 
@@ -341,83 +345,66 @@ function renderDetail() {
   return wrap;
 }
 
-// ── ATELIER ───────────────────────────────────────────────────────────────────
+// ── ATELIER ────────────────────────────────────────────────────────────────────
 function renderAtelier() {
-  const wrap = h("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:C.beige}});
+  const wrap = h("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:C.white}});
+  const currentResult = atelierHistoryIndex>=0 ? atelierHistory[atelierHistoryIndex] : "";
+  const isSms = atelierType==="sms";
 
-  // TYPE TOGGLE — Mail / SMS
-  const typeRow = h("div",{style:{display:"flex",gap:"8px",padding:"14px 16px 0",flexShrink:"0"}});
+  // TYPE — Mail / SMS
+  const typeRow = h("div",{style:{display:"flex",gap:"8px",padding:"14px 14px 0",flexShrink:"0"}});
   ["mail","sms"].forEach(t => {
-    const lbl = t==="mail" ? "📧 Mail" : "💬 SMS";
     const isActive = atelierType===t;
     typeRow.append(h("button",{
-      style:{flex:"1",padding:"10px",borderRadius:"9px",fontSize:"13px",fontWeight:"700",background:isActive?C.navy:"#EAE4DC",border:"1.5px solid "+(isActive?C.navy:"#C8BFB5"),color:isActive?C.white:C.navy,cursor:"pointer",transition:"all 0.15s"},
+      style:{flex:"1",padding:"10px",borderRadius:"9px",fontSize:"13px",fontWeight:"700",background:isActive?C.navy:C.bgsoft,border:"2px solid "+(isActive?C.navy:C.border),color:isActive?C.white:C.navy,cursor:"pointer",transition:"all 0.15s"},
       onclick:()=>{atelierType=t;atelierResult="";atelierHistory=[];atelierHistoryIndex=-1;atelierActiveMod=null;render();}
-    },lbl));
+    },t==="mail"?"📧 Mail":"💬 SMS"));
   });
 
-  // MODE TOGGLE — Répondre / Reformuler
-  const modeRow = h("div",{style:{display:"flex",gap:"8px",padding:"10px 16px 0",flexShrink:"0"}});
+  // MODE — Répondre / Reformuler
+  const modeRow = h("div",{style:{display:"flex",gap:"8px",padding:"10px 14px 0",flexShrink:"0"}});
   [["repondre","↩ Répondre"],["reformuler","✦ Reformuler"]].forEach(([m,lbl])=>{
     const isActive = atelierMode===m;
     modeRow.append(h("button",{
-      style:{flex:"1",padding:"8px",borderRadius:"9px",fontSize:"12px",fontWeight:"600",background:isActive?C.lavande:"#EAE4DC",border:"1.5px solid "+(isActive?C.lavande:"#C8BFB5"),color:isActive?C.white:C.navy,cursor:"pointer",transition:"all 0.15s"},
+      style:{flex:"1",padding:"9px",borderRadius:"9px",fontSize:"12px",fontWeight:"700",background:isActive?C.lavande:C.bgsoft,border:"2px solid "+(isActive?C.lavandeDark:C.border),color:isActive?C.white:C.navy,cursor:"pointer",transition:"all 0.15s"},
       onclick:()=>{atelierMode=m;atelierResult="";atelierHistory=[];atelierHistoryIndex=-1;atelierActiveMod=null;render();}
     },lbl));
   });
 
-  // ZONE DE SAISIE
-  const inputWrap = h("div",{style:{padding:"12px 16px 0",flexShrink:"0"}});
-  const inputLabel = h("div",{style:{fontSize:"10px",fontWeight:"700",color:C.muted,textTransform:"uppercase",letterSpacing:"1.3px",marginBottom:"6px"}},
-    atelierType==="sms" ? "Votre SMS" : "Votre mail"
-  );
+  // SAISIE
+  const inputWrap = h("div",{style:{padding:"10px 14px 0",flexShrink:"0"}});
+  inputWrap.append(h("div",{style:{fontSize:"10px",fontWeight:"700",color:C.muted,textTransform:"uppercase",letterSpacing:"1.3px",marginBottom:"6px"}},isSms?"Votre SMS":"Votre mail"));
   const textarea = h("textarea",{
-    style:{width:"100%",padding:"12px 14px",borderRadius:"10px",border:"1.5px solid #C8BFB5",fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.6",display:"block",minHeight:atelierType==="sms"?"80px":"120px"},
-    placeholder: atelierType==="sms" ? "Collez ou écrivez votre SMS ici…" : "Collez ou écrivez votre mail ici…",
-    rows: atelierType==="sms" ? "4" : "6"
+    style:{width:"100%",padding:"12px 14px",borderRadius:"10px",border:"1.5px solid "+C.border,fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.6",display:"block"},
+    placeholder:isSms?"Collez ou écrivez votre SMS ici…":"Collez ou écrivez votre mail ici…",
+    rows:isSms?"4":"6"
   });
   textarea.value = atelierInput;
   textarea.addEventListener("input", e => { atelierInput = e.target.value; });
-  inputWrap.append(inputLabel, textarea);
+  inputWrap.append(textarea);
 
-  // CHAMP CONSIGNE
-  const consigneWrap = h("div",{style:{padding:"8px 16px 0",flexShrink:"0"}});
-  const consigneTA = h("textarea",{
-    style:{width:"100%",padding:"8px 12px",borderRadius:"8px",border:"1.5px solid #C8BFB5",fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:"#EAE4DC",resize:"none",outline:"none",lineHeight:"1.5",display:"block"},
-    placeholder:"Consigne : plus court, plus commercial, ajouter un détail…",
-    rows:"2"
-  });
-  consigneTA.value = atelierConsigne;
-  consigneTA.addEventListener("input", e => { atelierConsigne = e.target.value; });
-  consigneWrap.append(consigneTA);
-
-  // BOUTON LANCER — visible uniquement si pas encore de résultat
-  const actionLabel = atelierMode==="repondre" ? "GÉNÉRER LA RÉPONSE" : "REFORMULER";
-  const btnRow = h("div",{style:{display:"flex",gap:"8px",margin:"10px 16px 0",flexShrink:"0"}});
-
+  // BOUTON GÉNÉRER — visible seulement avant le 1er résultat
+  const btnRow = h("div",{style:{padding:"10px 14px 0",flexShrink:"0"}});
   if (atelierHistory.length===0) {
+    const actionLabel = atelierMode==="repondre"?"GÉNÉRER LA RÉPONSE":"REFORMULER";
     const launchBtn = h("button",{
-      style:{flex:"1",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?"#C8BFB5":C.lavande,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.5px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
+      style:{width:"100%",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?C.border:C.lavande,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.5px",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
       onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
     });
-    if (atelierLoading) {
-      launchBtn.append(h("span",{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"↻"),"Traitement…");
-    } else {
-      launchBtn.textContent = actionLabel;
-    }
+    if (atelierLoading) launchBtn.append(h("span",{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"↻"),"Traitement…");
+    else launchBtn.textContent = actionLabel;
     btnRow.append(launchBtn);
   }
 
   // RÉSULTAT
-  const resultWrap = h("div",{style:{flex:"1",overflowY:"auto",padding:"12px 16px 0",display:"flex",flexDirection:"column",gap:"10px"}});
-  const currentResult = atelierHistoryIndex>=0 ? atelierHistory[atelierHistoryIndex] : "";
+  const resultWrap = h("div",{style:{flex:"1",overflowY:"auto",padding:"10px 14px 0",display:"flex",flexDirection:"column",gap:"8px"}});
 
   if (currentResult || atelierLoading) {
-    // Boutons modificateurs
-    const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px",flexShrink:"0"}});
+    // Boutons modif
+    const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px",flexShrink:"0"}});
     MODS.forEach((lbl,i)=>{
       const id=MOD_IDS[i],isActive=atelierActiveMod===id,disabled=atelierLoading||!currentResult;
-      grid.append(h("button",{style:{padding:"0 4px",borderRadius:"7px",fontSize:"11px",fontWeight:"600",background:isActive?C.lavande:C.white,border:"1.5px solid "+(isActive?C.lavande:C.navy),color:isActive?C.white:C.navy,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,transition:"all 0.15s",textAlign:"center",height:"32px"},onclick:()=>{if(!disabled)applyAtelierMod(id);}},lbl));
+      grid.append(h("button",{style:{padding:"0 4px",borderRadius:"7px",fontSize:"11px",fontWeight:"700",background:isActive?C.lavande:C.white,border:"1.5px solid "+(isActive?C.lavandeDark:C.border),color:isActive?C.white:C.navy,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,height:"34px",transition:"all 0.15s"},onclick:()=>{if(!disabled)applyAtelierMod(id);}},lbl));
     });
     resultWrap.append(grid);
 
@@ -425,71 +412,70 @@ function renderAtelier() {
     if (atelierHistory.length>1) {
       const navRow = h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:"0"}});
       const prevBtn = h("button",{
-        style:{padding:"6px 16px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:atelierHistoryIndex>0?"#EAE4DC":"#F0EDE9",border:"1.5px solid #C8BFB5",color:atelierHistoryIndex>0?C.navy:C.muted,cursor:atelierHistoryIndex>0?"pointer":"not-allowed"},
+        style:{padding:"6px 14px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:atelierHistoryIndex>0?C.white:C.bgsoft,border:"1.5px solid "+(atelierHistoryIndex>0?C.navy:C.border),color:atelierHistoryIndex>0?C.navy:C.muted,cursor:atelierHistoryIndex>0?"pointer":"not-allowed"},
         onclick:()=>{if(atelierHistoryIndex>0){atelierHistoryIndex--;atelierActiveMod=null;render();}}
       },"◀ Précédent");
-      const counter = h("div",{style:{fontSize:"11px",fontWeight:"700",color:C.muted}},(atelierHistoryIndex+1)+" / "+atelierHistory.length);
+      const counter = h("div",{style:{fontSize:"12px",fontWeight:"700",color:C.navy}},(atelierHistoryIndex+1)+" / "+atelierHistory.length);
       const nextBtn = h("button",{
-        style:{padding:"6px 16px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:atelierHistoryIndex<atelierHistory.length-1?"#EAE4DC":"#F0EDE9",border:"1.5px solid #C8BFB5",color:atelierHistoryIndex<atelierHistory.length-1?C.navy:C.muted,cursor:atelierHistoryIndex<atelierHistory.length-1?"pointer":"not-allowed"},
+        style:{padding:"6px 14px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:atelierHistoryIndex<atelierHistory.length-1?C.white:C.bgsoft,border:"1.5px solid "+(atelierHistoryIndex<atelierHistory.length-1?C.navy:C.border),color:atelierHistoryIndex<atelierHistory.length-1?C.navy:C.muted,cursor:atelierHistoryIndex<atelierHistory.length-1?"pointer":"not-allowed"},
         onclick:()=>{if(atelierHistoryIndex<atelierHistory.length-1){atelierHistoryIndex++;atelierActiveMod=null;render();}}
       },"Suivant ▶");
-      navRow.append(prevBtn, counter, nextBtn);
+      navRow.append(prevBtn,counter,nextBtn);
       resultWrap.append(navRow);
     }
 
-    const isSmsResult = atelierType==="sms";
-    const box = h("div",{style:{background:C.white,borderRadius:"10px",border:"1.5px solid #C8BFB5",padding:"14px"}});
+    // Boîte résultat
+    const box = h("div",{style:{background:C.white,borderRadius:"10px",border:"1px solid "+C.border,padding:"14px"}});
     if (atelierLoading) box.append(shimmerBlock(5));
-    else box.append(h("pre",{style:{fontSize:"13px",lineHeight:isSmsResult?"1.3":"1.85",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},currentResult));
+    else box.append(h("pre",{style:{fontSize:"13px",lineHeight:isSms?"1.35":"1.85",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},currentResult));
     resultWrap.append(box);
   }
 
   // BOTTOM — Consigne + Régénérer + Copier
-  const bottomBar = h("div",{style:{padding:"10px 16px 16px",background:C.white,borderTop:"2px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"8px"}});
+  const bottomBar = h("div",{style:{padding:"10px 14px 14px",background:C.white,borderTop:"1px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"8px"}});
+
   if (currentResult && !atelierLoading) {
-    // Champ consigne ici (entre résultat et régénérer)
-    const consigneBot = h("textarea",{
-      style:{width:"100%",padding:"8px 12px",borderRadius:"8px",border:"2px solid "+C.navy,fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.5",display:"block"},
+    const consigneTA = h("textarea",{
+      style:{width:"100%",padding:"8px 12px",borderRadius:"8px",border:"2px solid "+C.navy,fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.5"},
       placeholder:"Consigne : plus court, plus commercial, ajouter un détail…",
       rows:"2"
     });
-    consigneBot.value = atelierConsigne;
-    consigneBot.addEventListener("input", e => { atelierConsigne = e.target.value; });
+    consigneTA.value = atelierConsigne;
+    consigneTA.addEventListener("input", e => { atelierConsigne = e.target.value; });
 
-    const regenBtn2 = h("button",{
-      style:{width:"100%",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:"#EAE4DC",border:"1.5px solid #C8BFB5",color:C.navy,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},
+    const regenBtn = h("button",{
+      style:{width:"100%",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},
       onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
-    },h("span",{},"↻"),"Régénérer une proposition");
+    },h("span",{style:{display:"inline-block",animation:atelierLoading?"spin 1s linear infinite":"none"}},"↻"),"Régénérer une proposition");
+
     const copyBtn = h("button",{
-      style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:atelierCopied?"#2D7D52":C.navy,border:"none",color:C.white,cursor:"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
+      style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:atelierCopied?C.green:C.navy,border:"none",color:C.white,cursor:"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
       onclick:()=>{
         navigator.clipboard.writeText(currentResult).catch(()=>{});
         atelierCopied=true; render();
         setTimeout(()=>{ atelierCopied=false; render(); },2500);
       }
     },atelierCopied?"✓ COPIÉ !":"COPIER LE RÉSULTAT");
-    bottomBar.append(consigneBot, regenBtn2, copyBtn);
+
+    bottomBar.append(consigneTA, regenBtn, copyBtn);
   }
 
   wrap.append(typeRow, modeRow, inputWrap, btnRow, resultWrap, bottomBar);
   return wrap;
 }
 
-// ── ATELIER ACTIONS ───────────────────────────────────────────────────────────
+// ── ACTIONS ────────────────────────────────────────────────────────────────────
 async function launchAtelier() {
   if (!atelierInput.trim()) return;
   atelierLoading=true; atelierActiveMod=null; render();
   try {
-    let res;
-    if (atelierMode==="repondre") {
-      res = await doAtelierRepondre(atelierInput+(atelierConsigne?"\n\nCONSIGNE : "+atelierConsigne:""), atelierType, null, null);
-    } else {
-      res = await doAtelierReformuler(atelierInput+(atelierConsigne?"\n\nCONSIGNE : "+atelierConsigne:""), atelierType, null, null);
-    }
+    const res = atelierMode==="repondre"
+      ? await doAtelierRepondre(atelierInput, atelierType, null, null)
+      : await doAtelierReformuler(atelierInput, atelierType, null, null);
     atelierHistory.push(res);
     atelierHistoryIndex = atelierHistory.length-1;
     atelierResult = res;
-  } catch(e) { }
+  } catch(e) {}
   atelierLoading=false; render();
 }
 
@@ -498,12 +484,9 @@ async function applyAtelierMod(mod) {
   if (!currentResult) return;
   atelierActiveMod=mod; atelierLoading=true; render();
   try {
-    let res;
-    if (atelierMode==="repondre") {
-      res = await doAtelierRepondre(atelierInput, atelierType, mod, currentResult);
-    } else {
-      res = await doAtelierReformuler(atelierInput, atelierType, mod, currentResult);
-    }
+    const res = atelierMode==="repondre"
+      ? await doAtelierRepondre(atelierInput, atelierType, mod, currentResult)
+      : await doAtelierReformuler(atelierInput, atelierType, mod, currentResult);
     atelierHistory.push(res);
     atelierHistoryIndex = atelierHistory.length-1;
     atelierResult = res;
@@ -511,7 +494,6 @@ async function applyAtelierMod(mod) {
   atelierLoading=false; render();
 }
 
-// ── INBOX ACTIONS ─────────────────────────────────────────────────────────────
 function openEmail(email) {
   selected=email; analysis=null; reply=""; activeMod=null; copied=false; activeTab="reply";
   screen="detail"; loading=true; render();
@@ -543,9 +525,9 @@ function doCopy() {
 function fieldBlock(lbl,val,isPre) {
   const wrap = h("div",{});
   wrap.append(h("div",{style:{fontSize:"10px",fontWeight:"700",color:C.muted,textTransform:"uppercase",letterSpacing:"1.3px",marginBottom:"6px"}},lbl));
-  const card = h("div",{style:{background:"#FFFFFF",borderRadius:"9px",border:"1px solid "+C.border,padding:"11px 13px",fontSize:"13px",color:"#162D49",lineHeight:"1.6"}});
-  if (isPre) card.append(h("pre",{style:{fontSize:"13px",lineHeight:"1.9",color:"#162D49",whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},val));
-  else card.textContent=val;
+  const card = h("div",{style:{background:C.white,borderRadius:"9px",border:"1px solid "+C.border,padding:"11px 13px"}});
+  if (isPre) card.append(h("pre",{style:{fontSize:"13px",lineHeight:"1.85",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},val));
+  else card.append(h("div",{style:{fontSize:"13px",color:C.navy,lineHeight:"1.6"}},val));
   wrap.append(card);
   return wrap;
 }
