@@ -478,7 +478,7 @@ function renderAtelier() {
     const isSmsRes = atelierType==="sms";
 
     // Nav précédent/suivant si besoin
-    const resWrap = h("div",{style:{flex:"1",overflowY:"auto",padding:"12px 14px 0",display:"flex",flexDirection:"column",gap:"8px"}});
+    const resWrap = h("div",{style:{padding:"12px 14px 0",display:"flex",flexDirection:"column",gap:"8px",flexShrink:"0"}});
 
     if (atelierHistory.length>1) {
       const nav = h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}});
