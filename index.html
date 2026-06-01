@@ -61,6 +61,9 @@ let atelierLoading = false;
 let atelierCopied = false;
 let atelierActiveMod = null;
 let atelierConsigne = "";
+let atelierGuideStep = "idle"; // "idle" | "questions" | "result"
+let atelierQuestions = "";
+let atelierAnswers = "";
 
 // ── UTILS ──────────────────────────────────────────────────────────────────────
 function timeAgo(d) {
@@ -138,6 +141,32 @@ const REGLES_MAIL = `=== REGLES ===
 - Par defaut COURT (3-5 lignes max)
 - Genere UNIQUEMENT le corps de la reponse
 === FIN DES REGLES ===`;
+
+async function doAtelierGuide(texte, type, mode) {
+  const isSms = type==="sms";
+  const sys = "Tu es AB MAIL, assistant expert en communication commerciale pour AB RENOV. Tu aides a produire des messages parfaits en posant les bonnes questions AVANT de rediger.";
+  const content = "Analyse ce "+(isSms?"SMS":"mail")+" que je veux "+(mode==="repondre"?"traiter (repondre)":"reformuler")+" :
+
+"+texte+"
+
+Pose-moi 1 ou 2 questions COURTES et CIBLEES pour bien comprendre ce que je veux comme reponse. Questions simples, directes. Pas de bla-bla. Format : une question par ligne, commencant par un numero.";
+  return callClaude([{role:"user",content}],sys);
+}
+
+async function doAtelierAvecReponses(texte, type, mode, questions, answers) {
+  const isSms = type==="sms";
+  const regles = isSms ? REGLES_SMS : REGLES_MAIL;
+  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV. Respecte imperativement les regles fournies.";
+  const consigne = atelierConsigne ? "\n\n!!! INSTRUCTION PRIORITAIRE !!!\n"+atelierConsigne+"\n!!! FIN !!!" : "";
+  const content = consigne
+    + "\n\n" + regles
+    + "\n\nContexte : voici les questions que tu m'as posees et mes reponses :"
+    + "\n\nQUESTIONS :\n" + questions
+    + "\n\nMES REPONSES :\n" + answers
+    + "\n\nTexte original :\n" + texte
+    + "\n\nTache : " + (mode==="repondre" ? "Redige une reponse professionnelle" : "Reformule ce texte de maniere professionnelle") + " en tenant compte de mes reponses.";
+  return callClaude([{role:"user",content}],sys);
+}
 
 async function doAtelierRepondre(texte, type, modifier, prev) {
   const isSms = type==="sms";
@@ -410,23 +439,60 @@ function renderAtelier() {
   textarea.addEventListener("input", e => { atelierInput = e.target.value; });
   inputWrap.append(textarea);
 
-  // BOUTON GÉNÉRER — visible seulement avant le 1er résultat
+  // BOUTONS LANCER — ⚡ Rapide ou 🎯 Guidé
   const btnRow = h("div",{style:{padding:"10px 14px 0",flexShrink:"0"}});
-  if (atelierHistory.length===0) {
-    const actionLabel = atelierMode==="repondre"?"GÉNÉRER LA RÉPONSE":"REFORMULER";
-    const launchBtn = h("button",{
-      style:{width:"100%",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?C.border:C.lavande,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.5px",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
+  if (atelierHistory.length===0 && atelierGuideStep==="idle") {
+    const twoBtn = h("div",{style:{display:"flex",gap:"8px"}});
+    const rapideBtn = h("button",{
+      style:{flex:"1",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?C.border:C.lavande,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.3px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",transition:"all 0.2s"},
       onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
     });
-    if (atelierLoading) launchBtn.append(h("span",{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"↻"),"Traitement…");
-    else launchBtn.textContent = actionLabel;
-    btnRow.append(launchBtn);
+    if (atelierLoading) rapideBtn.append(h("span",{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"↻"),"Traitement…");
+    else rapideBtn.append("⚡","Rapide");
+
+    const guideBtn = h("button",{
+      style:{flex:"1",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?C.border:C.navy,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.3px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",transition:"all 0.2s"},
+      onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchGuide();}
+    },"🎯","Guidé");
+
+    twoBtn.append(rapideBtn, guideBtn);
+    btnRow.append(twoBtn);
   }
 
   // RÉSULTAT
   const resultWrap = h("div",{style:{flex:"1",overflowY:"auto",padding:"10px 14px 0",display:"flex",flexDirection:"column",gap:"8px"}});
 
-  if (currentResult || atelierLoading) {
+  // MODE GUIDÉ — questions de l'IA
+  if (atelierGuideStep==="questions" && atelierQuestions) {
+    const qBox = h("div",{style:{background:C.white,borderRadius:"10px",border:"2px solid "+C.navy,padding:"14px"}});
+    qBox.append(
+      h("div",{style:{fontSize:"10px",fontWeight:"700",color:C.navy,textTransform:"uppercase",letterSpacing:"1.3px",marginBottom:"8px"}},"🎯 Questions pour affiner"),
+      h("pre",{style:{fontSize:"13px",lineHeight:"1.7",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},atelierQuestions)
+    );
+    const answersTA = h("textarea",{
+      style:{width:"100%",marginTop:"10px",padding:"10px 12px",borderRadius:"8px",border:"1.5px solid "+C.border,fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.5"},
+      placeholder:"Vos réponses ici…",
+      rows:"3"
+    });
+    answersTA.value = atelierAnswers;
+    answersTA.addEventListener("input", e => { atelierAnswers = e.target.value; });
+    answersTA.addEventListener("keydown", e => { e.stopPropagation(); });
+    qBox.append(answersTA);
+
+    const genBtn = h("button",{
+      style:{width:"100%",marginTop:"8px",height:"44px",borderRadius:"9px",fontSize:"13px",fontWeight:"700",background:C.lavande,border:"none",color:C.white,cursor:"pointer",letterSpacing:"0.3px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},
+      onclick:()=>{if(atelierAnswers.trim())launchWithAnswers();}
+    },"✦ Générer avec mes réponses");
+    resultWrap.append(qBox, genBtn);
+  }
+
+  if (atelierLoading) {
+    const loadBox = h("div",{style:{background:C.white,borderRadius:"10px",border:"1px solid "+C.border,padding:"14px"}});
+    loadBox.append(shimmerBlock(5));
+    resultWrap.append(loadBox);
+  }
+
+  if (currentResult && !atelierLoading) {
     // Boutons modif
     const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px",flexShrink:"0"}});
     MODS.forEach((lbl,i)=>{
@@ -483,6 +549,7 @@ function renderAtelier() {
       onclick:()=>{
         atelierInput=""; atelierResult=""; atelierHistory=[];
         atelierHistoryIndex=-1; atelierActiveMod=null; atelierConsigne="";
+        atelierGuideStep="idle"; atelierQuestions=""; atelierAnswers="";
         render();
       }
     },"✦ Nouveau");
@@ -509,6 +576,27 @@ function renderAtelier() {
 }
 
 // ── ACTIONS ────────────────────────────────────────────────────────────────────
+async function launchGuide() {
+  if (!atelierInput.trim()) return;
+  atelierLoading=true; atelierGuideStep="idle"; render();
+  try {
+    atelierQuestions = await doAtelierGuide(atelierInput, atelierType, atelierMode);
+    atelierGuideStep="questions";
+  } catch(e) { atelierGuideStep="idle"; }
+  atelierLoading=false; render();
+}
+
+async function launchWithAnswers() {
+  if (!atelierAnswers.trim()) return;
+  atelierLoading=true; atelierGuideStep="result"; render();
+  try {
+    const res = await doAtelierAvecReponses(atelierInput, atelierType, atelierMode, atelierQuestions, atelierAnswers);
+    atelierHistory.push(res);
+    atelierHistoryIndex = atelierHistory.length-1;
+    atelierResult = res;
+  } catch(e) {}
+  atelierLoading=false; render();
+}
 async function launchAtelier() {
   if (!atelierInput.trim()) return;
   atelierLoading=true; atelierActiveMod=null; render();
