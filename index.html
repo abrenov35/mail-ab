@@ -437,15 +437,25 @@ function renderAtelier() {
       resultWrap.append(navRow);
     }
 
+    const isSmsResult = atelierType==="sms";
     const box = h("div",{style:{background:C.white,borderRadius:"10px",border:"1.5px solid #C8BFB5",padding:"14px"}});
     if (atelierLoading) box.append(shimmerBlock(5));
-    else box.append(h("pre",{style:{fontSize:"13px",lineHeight:"1.85",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},currentResult));
+    else box.append(h("pre",{style:{fontSize:"13px",lineHeight:isSmsResult?"1.3":"1.85",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},currentResult));
     resultWrap.append(box);
   }
 
-  // BOTTOM — Régénérer + Copier
+  // BOTTOM — Consigne + Régénérer + Copier
   const bottomBar = h("div",{style:{padding:"10px 16px 16px",background:C.white,borderTop:"2px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"8px"}});
   if (currentResult && !atelierLoading) {
+    // Champ consigne ici (entre résultat et régénérer)
+    const consigneBot = h("textarea",{
+      style:{width:"100%",padding:"8px 12px",borderRadius:"8px",border:"1.5px solid #C8BFB5",fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:"#EAE4DC",resize:"none",outline:"none",lineHeight:"1.5",display:"block"},
+      placeholder:"Consigne : plus court, plus commercial, ajouter un détail…",
+      rows:"2"
+    });
+    consigneBot.value = atelierConsigne;
+    consigneBot.addEventListener("input", e => { atelierConsigne = e.target.value; });
+
     const regenBtn2 = h("button",{
       style:{width:"100%",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:"#EAE4DC",border:"1.5px solid #C8BFB5",color:C.navy,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},
       onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
@@ -458,10 +468,10 @@ function renderAtelier() {
         setTimeout(()=>{ atelierCopied=false; render(); },2500);
       }
     },atelierCopied?"✓ COPIÉ !":"COPIER LE RÉSULTAT");
-    bottomBar.append(regenBtn2, copyBtn);
+    bottomBar.append(consigneBot, regenBtn2, copyBtn);
   }
 
-  wrap.append(typeRow, modeRow, inputWrap, consigneWrap, btnRow, resultWrap, bottomBar);
+  wrap.append(typeRow, modeRow, inputWrap, btnRow, resultWrap, bottomBar);
   return wrap;
 }
 
