@@ -440,18 +440,22 @@ function renderAtelier() {
     resultWrap.append(box);
   }
 
-  // BOTTOM — Copier
-  const bottomBar = h("div",{style:{padding:"10px 16px 16px",background:C.white,borderTop:"2px solid "+C.border,flexShrink:"0"}});
+  // BOTTOM — Régénérer + Copier
+  const bottomBar = h("div",{style:{padding:"10px 16px 16px",background:C.white,borderTop:"2px solid "+C.border,flexShrink:"0",display:"flex",flexDirection:"column",gap:"8px"}});
   if (currentResult && !atelierLoading) {
+    const regenBtn2 = h("button",{
+      style:{width:"100%",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:"#EAE4DC",border:"1.5px solid #C8BFB5",color:C.navy,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},
+      onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
+    },h("span",{},"↻"),"Régénérer une proposition");
     const copyBtn = h("button",{
-      style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:atelierCopied?"#2D7D52":C.lavande,border:"none",color:C.white,cursor:"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
+      style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:atelierCopied?"#2D7D52":C.navy,border:"none",color:C.white,cursor:"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
       onclick:()=>{
         navigator.clipboard.writeText(currentResult).catch(()=>{});
         atelierCopied=true; render();
         setTimeout(()=>{ atelierCopied=false; render(); },2500);
       }
     },atelierCopied?"✓ COPIÉ !":"COPIER LE RÉSULTAT");
-    bottomBar.append(copyBtn);
+    bottomBar.append(regenBtn2, copyBtn);
   }
 
   wrap.append(typeRow, modeRow, inputWrap, consigneWrap, btnRow, resultWrap, bottomBar);
