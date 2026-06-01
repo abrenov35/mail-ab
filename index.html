@@ -116,29 +116,51 @@ async function doReply(email, ana, modifier, prev) {
 }
 
 // ── ATELIER PROMPTS ────────────────────────────────────────────────────────────
-const REGLES_BASE = "RELIS CES REGLES AVANT CHAQUE GENERATION ET REGENERATION, SANS EXCEPTION :\n";
+const REGLES_SMS = `=== REGLES ABSOLUES A RESPECTER (relis-les a chaque fois) ===
+- JAMAIS de signature
+- JAMAIS "Cordialement" ou variantes
+- JAMAIS de compliments ou formules mielleu­ses
+- JAMAIS de nom de personne
+- INTERDIT : toute date, jour, heure, delai chiffre, semaine, mois. Remplacer par : "on vous recontacte" ou "une date sera fixee"
+- Style : court, direct, professionnel, naturel SMS
+- 1 a 3 lignes MAXIMUM
+- Genere UNIQUEMENT le corps du message, rien d'autre
+=== FIN DES REGLES ===`;
+
+const REGLES_MAIL = `=== REGLES ABSOLUES A RESPECTER (relis-les a chaque fois) ===
+- JAMAIS de signature
+- JAMAIS "Cordialement" ou variantes
+- JAMAIS de compliments ou formules mielleu­ses
+- JAMAIS de nom de personne — utiliser : "nous traitons", "une equipe", "une intervention"
+- INTERDIT : toute date, jour, heure, delai chiffre (48h, 24h, J+3...), semaine, mois, "rapidement", "sous peu", "semaine prochaine". Remplacer SYSTEMATIQUEMENT par : "une date vous sera communiquee" ou "nous revenons vers vous"
+- Style : professionnel, direct, commercial, bankable
+- INTERDIT : ecrire l'objet du mail dans la reponse
+- INTERDIT : proposer un devis, estimation ou engagement financier. Repondre : "nous revenons vers vous"
+- Par defaut COURT (3-5 lignes max). Developpe seulement si consigne explicite
+- Genere UNIQUEMENT le corps de la reponse, rien d'autre
+=== FIN DES REGLES ===`;
 
 async function doAtelierRepondre(texte, type, modifier, prev) {
   const isSms = type==="sms";
-  const sys = REGLES_BASE + (isSms
-    ? "Tu es AB MAIL, assistant commercial AB RENOV. Reponses SMS professionnelles.\n- JAMAIS signature, 'Cordialement', compliments, nom de personne\n- INTERDIT : dates, delais, jours. Remplacer par 'on vous recontacte' ou 'une date sera fixee'\n- Style : court, direct, pro, naturel SMS\n- 1 a 3 lignes MAX\n- Corps de reponse uniquement"
-    : "Tu es AB MAIL, assistant commercial AB RENOV. Emails professionnels.\n- JAMAIS signature, 'Cordialement', compliments, nom de personne\n- INTERDIT : dates, delais, jours, semaines, mois, expressions temporelles. Remplacer par 'une date vous sera communiquee' ou 'nous revenons vers vous'\n- Style : professionnel, direct, commercial, bankable\n- INTERDIT : ecrire l'objet dans la reponse\n- INTERDIT : proposer devis ou engagement financier\n- Par defaut COURT (3-5 lignes)\n- Corps de reponse uniquement");
-  const mmap = {shorter:"Raccourcis cette reponse",longer:"Developpe davantage",commercial:"Angle commercial",technical:"Precisions techniques"};
+  const regles = isSms ? REGLES_SMS : REGLES_MAIL;
+  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu dois IMPERATIVEMENT respecter les regles qui te seront rappelees dans chaque message.";
+  const mmap = {shorter:"Raccourcis cette reponse (garde les regles)",longer:"Developpe davantage (garde les regles)",commercial:"Angle plus commercial (garde les regles)",technical:"Precisions techniques (garde les regles)"};
+  const consigne = atelierConsigne ? "\n\n--- CONSIGNE UTILISATEUR (priorite absolue) ---\n"+atelierConsigne+"\n---" : "";
   const content = (modifier&&prev)
-    ? "RELIS LES REGLES. Applique : "+(mmap[modifier]||modifier)+" :\n\n"+prev+(atelierConsigne?"\n\nCONSIGNE SUPPLEMENTAIRE : "+atelierConsigne:"")
-    : "RELIS LES REGLES. Redige une reponse a ce "+(isSms?"SMS":"mail")+" :\n\n"+texte+(atelierConsigne?"\n\nCONSIGNE : "+atelierConsigne:"");
+    ? regles+"\n\nTache : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev+consigne
+    : regles+"\n\nTache : Redige une reponse professionnelle a ce "+(isSms?"SMS":"mail")+".\n\nTexte original :\n"+texte+consigne;
   return callClaude([{role:"user",content}],sys);
 }
 
 async function doAtelierReformuler(texte, type, modifier, prev) {
   const isSms = type==="sms";
-  const sys = REGLES_BASE + (isSms
-    ? "Tu es AB MAIL, assistant commercial AB RENOV. Reformule des SMS en plus professionnel.\n- Garde le sens exact\n- Ton pro mais naturel SMS\n- Court et direct\n- JAMAIS signature, elements temporels\n- Texte reformule uniquement"
-    : "Tu es AB MAIL, assistant commercial AB RENOV. Reformule des emails en plus professionnel.\n- Garde le sens exact\n- Ton professionnel, direct, commercial, bankable\n- JAMAIS signature, elements temporels, compliments\n- Texte reformule uniquement");
-  const mmap = {shorter:"Raccourcis ce texte",longer:"Developpe davantage",commercial:"Angle plus commercial",technical:"Plus technique et precis"};
+  const regles = isSms ? REGLES_SMS : REGLES_MAIL;
+  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu dois IMPERATIVEMENT respecter les regles qui te seront rappelees dans chaque message.";
+  const mmap = {shorter:"Raccourcis ce texte (garde les regles)",longer:"Developpe davantage (garde les regles)",commercial:"Angle plus commercial (garde les regles)",technical:"Plus technique et precis (garde les regles)"};
+  const consigne = atelierConsigne ? "\n\n--- CONSIGNE UTILISATEUR (priorite absolue) ---\n"+atelierConsigne+"\n---" : "";
   const content = (modifier&&prev)
-    ? "RELIS LES REGLES. Applique : "+(mmap[modifier]||modifier)+" :\n\n"+prev+(atelierConsigne?"\n\nCONSIGNE SUPPLEMENTAIRE : "+atelierConsigne:"")
-    : "RELIS LES REGLES. Reformule ce "+(isSms?"SMS":"mail")+" :\n\n"+texte+(atelierConsigne?"\n\nCONSIGNE : "+atelierConsigne:"");
+    ? regles+"\n\nTache : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev+consigne
+    : regles+"\n\nTache : Reformule ce "+(isSms?"SMS":"mail")+" pour le rendre plus professionnel, direct et percutant. Garde le sens exact.\n\nTexte original :\n"+texte+consigne;
   return callClaude([{role:"user",content}],sys);
 }
 
