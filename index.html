@@ -116,28 +116,28 @@ async function doReply(email, ana, modifier, prev) {
 }
 
 // ── ATELIER PROMPTS ────────────────────────────────────────────────────────────
-const REGLES_SMS = `=== REGLES ABSOLUES A RESPECTER (relis-les a chaque fois) ===
+const REGLES_SMS = `=== REGLES (sauf si une INSTRUCTION PRIORITAIRE les contredit) ===
 - JAMAIS de signature
 - JAMAIS "Cordialement" ou variantes
-- JAMAIS de compliments ou formules mielleu­ses
+- JAMAIS de compliments ou formules mielleuses
 - JAMAIS de nom de personne
-- INTERDIT : toute date, jour, heure, delai chiffre, semaine, mois. Remplacer par : "on vous recontacte" ou "une date sera fixee"
+- Par defaut : pas de date ni delai. Remplacer par "on vous recontacte" ou "une date sera fixee". EXCEPTION : si une INSTRUCTION PRIORITAIRE donne une date ou information specifique, utilise-la
 - Style : court, direct, professionnel, naturel SMS
 - 1 a 3 lignes MAXIMUM
-- Genere UNIQUEMENT le corps du message, rien d'autre
+- Genere UNIQUEMENT le corps du message
 === FIN DES REGLES ===`;
 
-const REGLES_MAIL = `=== REGLES ABSOLUES A RESPECTER (relis-les a chaque fois) ===
+const REGLES_MAIL = `=== REGLES (sauf si une INSTRUCTION PRIORITAIRE les contredit) ===
 - JAMAIS de signature
 - JAMAIS "Cordialement" ou variantes
-- JAMAIS de compliments ou formules mielleu­ses
+- JAMAIS de compliments ou formules mielleuses
 - JAMAIS de nom de personne — utiliser : "nous traitons", "une equipe", "une intervention"
-- INTERDIT : toute date, jour, heure, delai chiffre (48h, 24h, J+3...), semaine, mois, "rapidement", "sous peu", "semaine prochaine". Remplacer SYSTEMATIQUEMENT par : "une date vous sera communiquee" ou "nous revenons vers vous"
+- Par defaut : pas de date ni delai. Remplacer par "une date vous sera communiquee" ou "nous revenons vers vous". EXCEPTION : si une INSTRUCTION PRIORITAIRE donne une date ou information specifique, utilise-la
 - Style : professionnel, direct, commercial, bankable
 - INTERDIT : ecrire l'objet du mail dans la reponse
-- INTERDIT : proposer un devis, estimation ou engagement financier. Repondre : "nous revenons vers vous"
-- Par defaut COURT (3-5 lignes max). Developpe seulement si consigne explicite
-- Genere UNIQUEMENT le corps de la reponse, rien d'autre
+- INTERDIT : proposer un devis ou engagement financier
+- Par defaut COURT (3-5 lignes max)
+- Genere UNIQUEMENT le corps de la reponse
 === FIN DES REGLES ===`;
 
 async function doAtelierRepondre(texte, type, modifier, prev) {
