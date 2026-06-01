@@ -350,7 +350,7 @@ function renderAtelier() {
     const isActive = atelierType===t;
     typeRow.append(h("button",{
       style:{flex:"1",padding:"10px",borderRadius:"9px",fontSize:"13px",fontWeight:"700",background:isActive?C.navy:"#EAE4DC",border:"1.5px solid "+(isActive?C.navy:"#C8BFB5"),color:isActive?C.white:C.navy,cursor:"pointer",transition:"all 0.15s"},
-
+      onclick:()=>{atelierType=t;atelierResult="";atelierHistory=[];atelierHistoryIndex=-1;atelierActiveMod=null;render();}
     },lbl));
   });
 
