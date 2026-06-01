@@ -515,14 +515,19 @@ function renderAtelier() {
     consigneTA.addEventListener("input", e => { atelierConsigne = e.target.value; });
     consigneTA.addEventListener("keydown", e => { e.stopPropagation(); });
 
-    const btnRow2 = h("div",{style:{display:"flex",gap:"8px"}});
+    const btnRow2 = h("div",{style:{display:"flex",gap:"6px"}});
     const regenBtn = h("button",{
-      style:{flex:"1",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"},
+      style:{flex:"1",height:"38px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"5px"},
       onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
-    },h("span",{style:{display:"inline-block",animation:atelierLoading?"spin 1s linear infinite":"none"}},"↻"),"Régénérer");
+    },h("span",{},"↻"),"Régénérer");
+
+    const guideBtn2 = h("button",{
+      style:{height:"38px",padding:"0 12px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.navy,border:"1.5px solid "+C.navy,color:C.white,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:"5px"},
+      onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchGuide();}
+    },"🎯","Guidé");
 
     const newBtn = h("button",{
-      style:{height:"38px",padding:"0 14px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:"pointer",whiteSpace:"nowrap"},
+      style:{height:"38px",padding:"0 10px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",background:C.bgsoft,border:"1.5px solid "+C.border,color:C.navy,cursor:"pointer",whiteSpace:"nowrap"},
       onclick:()=>{
         atelierInput=""; atelierResult=""; atelierHistory=[];
         atelierHistoryIndex=-1; atelierActiveMod=null; atelierConsigne="";
@@ -530,7 +535,7 @@ function renderAtelier() {
         render();
       }
     },"✦ Nouveau");
-    btnRow2.append(regenBtn, newBtn);
+    btnRow2.append(regenBtn, guideBtn2, newBtn);
 
     const copyBtn = h("button",{
       style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:atelierCopied?C.green:C.navy,border:"none",color:C.white,cursor:"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
