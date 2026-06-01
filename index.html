@@ -2,19 +2,23 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>AB RENOV MAIL</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
   :root{--navy:#162D49;--beige:#F3EAE2;--lavande:#A495C3;--muted:#6B7A8D;--border:#C8BFB5;--bgsoft:#EDE8E1;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
   html,body{height:100%;background:#D6CCC4;font-family:'DM Sans',sans-serif;}
+  html{height:-webkit-fill-available;}
+  body{min-height:-webkit-fill-available;}
   button{-webkit-appearance:none;font-family:inherit;cursor:pointer;}
   @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   .shimmer-line{height:11px;border-radius:6px;background:linear-gradient(90deg,#D5CCC4,#EDE8E1,#D5CCC4);background-size:200% 100%;animation:shimmer 1.5s infinite;}
   ::-webkit-scrollbar{display:none;}
-  #app{max-width:480px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:#F3EAE2;overflow:hidden;}
+  #app{max-width:480px;margin:0 auto;height:100vh;height:-webkit-fill-available;display:flex;flex-direction:column;background:#F3EAE2;overflow:hidden;position:fixed;width:100%;top:0;left:0;right:0;}
 </style>
 </head>
 <body>
