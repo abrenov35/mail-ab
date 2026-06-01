@@ -52,10 +52,13 @@ let userInstruction = "";
 let atelierType = "mail"; // "mail" | "sms"
 let atelierMode = "repondre"; // "repondre" | "reformuler"
 let atelierInput = "";
+let atelierHistory = []; // toutes les propositions
+let atelierHistoryIndex = -1; // index courant
 let atelierResult = "";
 let atelierLoading = false;
 let atelierCopied = false;
 let atelierActiveMod = null;
+let atelierConsigne = "";
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 function timeAgo(d) {
@@ -347,7 +350,7 @@ function renderAtelier() {
     const isActive = atelierType===t;
     typeRow.append(h("button",{
       style:{flex:"1",padding:"10px",borderRadius:"9px",fontSize:"13px",fontWeight:"700",background:isActive?C.navy:"#EAE4DC",border:"1.5px solid "+(isActive?C.navy:"#C8BFB5"),color:isActive?C.white:C.navy,cursor:"pointer",transition:"all 0.15s"},
-      onclick:()=>{atelierType=t;atelierResult="";atelierActiveMod=null;render();}
+
     },lbl));
   });
 
@@ -357,7 +360,7 @@ function renderAtelier() {
     const isActive = atelierMode===m;
     modeRow.append(h("button",{
       style:{flex:"1",padding:"8px",borderRadius:"9px",fontSize:"12px",fontWeight:"600",background:isActive?C.lavande:"#EAE4DC",border:"1.5px solid "+(isActive?C.lavande:"#C8BFB5"),color:isActive?C.white:C.navy,cursor:"pointer",transition:"all 0.15s"},
-      onclick:()=>{atelierMode=m;atelierResult="";atelierActiveMod=null;render();}
+      onclick:()=>{atelierMode=m;atelierResult="";atelierHistory=[];atelierHistoryIndex=-1;atelierActiveMod=null;render();}
     },lbl));
   });
 
@@ -367,7 +370,7 @@ function renderAtelier() {
     atelierType==="sms" ? "Votre SMS" : "Votre mail"
   );
   const textarea = h("textarea",{
-    style:{width:"100%",padding:"12px 14px",borderRadius:"10px",border:"1.5px solid #C8BFB5",fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.6",display:"block",minHeight: atelierType==="sms"?"80px":"120px"},
+    style:{width:"100%",padding:"12px 14px",borderRadius:"10px",border:"1.5px solid #C8BFB5",fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.6",display:"block",minHeight:atelierType==="sms"?"80px":"120px"},
     placeholder: atelierType==="sms" ? "Collez ou écrivez votre SMS ici…" : "Collez ou écrivez votre mail ici…",
     rows: atelierType==="sms" ? "4" : "6"
   });
@@ -375,43 +378,75 @@ function renderAtelier() {
   textarea.addEventListener("input", e => { atelierInput = e.target.value; });
   inputWrap.append(inputLabel, textarea);
 
-  // BOUTON LANCER
+  // CHAMP CONSIGNE
+  const consigneWrap = h("div",{style:{padding:"8px 16px 0",flexShrink:"0"}});
+  const consigneTA = h("textarea",{
+    style:{width:"100%",padding:"8px 12px",borderRadius:"8px",border:"1.5px solid #C8BFB5",fontSize:"12px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:"#EAE4DC",resize:"none",outline:"none",lineHeight:"1.5",display:"block"},
+    placeholder:"Consigne : plus court, plus commercial, ajouter un détail…",
+    rows:"2"
+  });
+  consigneTA.value = atelierConsigne;
+  consigneTA.addEventListener("input", e => { atelierConsigne = e.target.value; });
+  consigneWrap.append(consigneTA);
+
+  // BOUTONS — Générer + Régénérer
   const actionLabel = atelierMode==="repondre" ? "GÉNÉRER LA RÉPONSE" : "REFORMULER";
+  const btnRow = h("div",{style:{display:"flex",gap:"8px",margin:"10px 16px 0",flexShrink:"0"}});
+
   const launchBtn = h("button",{
-    style:{margin:"10px 16px 0",width:"calc(100% - 32px)",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?"#C8BFB5":C.lavande,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.5px",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif",flexShrink:"0"},
+    style:{flex:"1",height:"44px",borderRadius:"10px",fontSize:"13px",fontWeight:"700",background:atelierLoading?"#C8BFB5":C.lavande,border:"none",color:atelierLoading?"#8A7F75":C.white,cursor:atelierLoading?"not-allowed":"pointer",letterSpacing:"0.5px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
     onclick:()=>{if(!atelierLoading&&atelierInput.trim())launchAtelier();}
   });
   if (atelierLoading) {
     launchBtn.append(h("span",{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"↻"),"Traitement…");
   } else {
-    launchBtn.textContent = actionLabel;
+    launchBtn.textContent = atelierHistory.length>0 ? "↻ RÉGÉNÉRER" : actionLabel;
   }
+
+  btnRow.append(launchBtn);
 
   // RÉSULTAT
   const resultWrap = h("div",{style:{flex:"1",overflowY:"auto",padding:"12px 16px 0",display:"flex",flexDirection:"column",gap:"10px"}});
+  const currentResult = atelierHistoryIndex>=0 ? atelierHistory[atelierHistoryIndex] : "";
 
-  if (atelierResult || atelierLoading) {
+  if (currentResult || atelierLoading) {
     // Boutons modificateurs
     const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px",flexShrink:"0"}});
     MODS.forEach((lbl,i)=>{
-      const id=MOD_IDS[i],isActive=atelierActiveMod===id,disabled=atelierLoading||!atelierResult;
+      const id=MOD_IDS[i],isActive=atelierActiveMod===id,disabled=atelierLoading||!currentResult;
       grid.append(h("button",{style:{padding:"0 4px",borderRadius:"7px",fontSize:"11px",fontWeight:"600",background:isActive?C.lavande:C.bgsoft,border:"1px solid "+(isActive?C.lavande:"#C8BFB5"),color:isActive?C.white:C.navy,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.5:1,transition:"all 0.15s",textAlign:"center",height:"32px"},onclick:()=>{if(!disabled)applyAtelierMod(id);}},lbl));
     });
     resultWrap.append(grid);
 
+    // Navigation précédent/suivant
+    if (atelierHistory.length>1) {
+      const navRow = h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:"0"}});
+      const prevBtn = h("button",{
+        style:{padding:"6px 16px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:atelierHistoryIndex>0?"#EAE4DC":"#F0EDE9",border:"1.5px solid #C8BFB5",color:atelierHistoryIndex>0?C.navy:C.muted,cursor:atelierHistoryIndex>0?"pointer":"not-allowed"},
+        onclick:()=>{if(atelierHistoryIndex>0){atelierHistoryIndex--;atelierActiveMod=null;render();}}
+      },"◀ Précédent");
+      const counter = h("div",{style:{fontSize:"11px",fontWeight:"700",color:C.muted}},(atelierHistoryIndex+1)+" / "+atelierHistory.length);
+      const nextBtn = h("button",{
+        style:{padding:"6px 16px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:atelierHistoryIndex<atelierHistory.length-1?"#EAE4DC":"#F0EDE9",border:"1.5px solid #C8BFB5",color:atelierHistoryIndex<atelierHistory.length-1?C.navy:C.muted,cursor:atelierHistoryIndex<atelierHistory.length-1?"pointer":"not-allowed"},
+        onclick:()=>{if(atelierHistoryIndex<atelierHistory.length-1){atelierHistoryIndex++;atelierActiveMod=null;render();}}
+      },"Suivant ▶");
+      navRow.append(prevBtn, counter, nextBtn);
+      resultWrap.append(navRow);
+    }
+
     const box = h("div",{style:{background:C.white,borderRadius:"10px",border:"1.5px solid #C8BFB5",padding:"14px"}});
     if (atelierLoading) box.append(shimmerBlock(5));
-    else box.append(h("pre",{style:{fontSize:"13px",lineHeight:"1.85",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},atelierResult));
+    else box.append(h("pre",{style:{fontSize:"13px",lineHeight:"1.85",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},currentResult));
     resultWrap.append(box);
   }
 
   // BOTTOM — Copier
   const bottomBar = h("div",{style:{padding:"10px 16px 16px",background:C.white,borderTop:"2px solid "+C.border,flexShrink:"0"}});
-  if (atelierResult && !atelierLoading) {
+  if (currentResult && !atelierLoading) {
     const copyBtn = h("button",{
       style:{width:"100%",height:"44px",borderRadius:"8px",fontSize:"13px",fontWeight:"700",background:atelierCopied?"#2D7D52":C.lavande,border:"none",color:C.white,cursor:"pointer",letterSpacing:"0.5px",transition:"all 0.2s",fontFamily:"'Futura PT','Futura','Century Gothic',sans-serif"},
       onclick:()=>{
-        navigator.clipboard.writeText(atelierResult).catch(()=>{});
+        navigator.clipboard.writeText(currentResult).catch(()=>{});
         atelierCopied=true; render();
         setTimeout(()=>{ atelierCopied=false; render(); },2500);
       }
@@ -419,33 +454,42 @@ function renderAtelier() {
     bottomBar.append(copyBtn);
   }
 
-  wrap.append(typeRow, modeRow, inputWrap, launchBtn, resultWrap, bottomBar);
+  wrap.append(typeRow, modeRow, inputWrap, consigneWrap, btnRow, resultWrap, bottomBar);
   return wrap;
 }
 
 // ── ATELIER ACTIONS ───────────────────────────────────────────────────────────
 async function launchAtelier() {
   if (!atelierInput.trim()) return;
-  atelierLoading=true; atelierResult=""; atelierActiveMod=null; render();
+  atelierLoading=true; atelierActiveMod=null; render();
   try {
+    let res;
     if (atelierMode==="repondre") {
-      atelierResult = await doAtelierRepondre(atelierInput, atelierType, null, null);
+      res = await doAtelierRepondre(atelierInput+(atelierConsigne?"\n\nCONSIGNE : "+atelierConsigne:""), atelierType, null, null);
     } else {
-      atelierResult = await doAtelierReformuler(atelierInput, atelierType, null, null);
+      res = await doAtelierReformuler(atelierInput+(atelierConsigne?"\n\nCONSIGNE : "+atelierConsigne:""), atelierType, null, null);
     }
-  } catch(e) { atelierResult="Une erreur est survenue."; }
+    atelierHistory.push(res);
+    atelierHistoryIndex = atelierHistory.length-1;
+    atelierResult = res;
+  } catch(e) { }
   atelierLoading=false; render();
 }
 
 async function applyAtelierMod(mod) {
-  if (!atelierResult) return;
+  const currentResult = atelierHistoryIndex>=0 ? atelierHistory[atelierHistoryIndex] : "";
+  if (!currentResult) return;
   atelierActiveMod=mod; atelierLoading=true; render();
   try {
+    let res;
     if (atelierMode==="repondre") {
-      atelierResult = await doAtelierRepondre(atelierInput, atelierType, mod, atelierResult);
+      res = await doAtelierRepondre(atelierInput, atelierType, mod, currentResult);
     } else {
-      atelierResult = await doAtelierReformuler(atelierInput, atelierType, mod, atelierResult);
+      res = await doAtelierReformuler(atelierInput, atelierType, mod, currentResult);
     }
+    atelierHistory.push(res);
+    atelierHistoryIndex = atelierHistory.length-1;
+    atelierResult = res;
   } catch(e) {}
   atelierLoading=false; render();
 }
