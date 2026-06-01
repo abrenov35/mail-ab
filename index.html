@@ -411,10 +411,10 @@ function renderAtelier() {
     topToggles.append(typeRow, modeRow);
 
     // Zone texte — flex:1 pour remplir l'espace
-    const inputWrap = h("div",{style:{flex:"1",padding:"10px 14px",display:"flex",flexDirection:"column",gap:"6px"}});
+    const inputWrap = h("div",{style:{padding:"10px 14px",display:"flex",flexDirection:"column",gap:"6px",flexShrink:"0"}});
     inputWrap.append(h("div",{style:{fontSize:"10px",fontWeight:"700",color:C.muted,textTransform:"uppercase",letterSpacing:"1.3px"}},isSms?"Votre SMS":"Votre mail"));
     const ta = h("textarea",{
-      style:{flex:"1",width:"100%",padding:"12px 14px",borderRadius:"10px",border:"1.5px solid "+C.border,fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.6"},
+      style:{width:"100%",height:"160px",padding:"12px 14px",borderRadius:"10px",border:"1.5px solid "+C.border,fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.6"},
       placeholder:isSms?"Collez ou écrivez votre SMS ici…":"Collez ou écrivez votre mail ici…"
     });
     ta.value = atelierInput;
@@ -441,12 +441,12 @@ function renderAtelier() {
 
   } else if (atelierGuideStep==="questions") {
     // ── ÉCRAN QUESTIONS ──
-    const qWrap = h("div",{style:{flex:"1",padding:"14px",display:"flex",flexDirection:"column",gap:"10px"}});
+    const qWrap = h("div",{style:{padding:"14px",display:"flex",flexDirection:"column",gap:"10px",flexShrink:"0"}});
     qWrap.append(h("div",{style:{fontSize:"10px",fontWeight:"700",color:C.navy,textTransform:"uppercase",letterSpacing:"1.3px"}},"🎯 Questions pour affiner"));
     const qBox = h("div",{style:{background:C.white,borderRadius:"10px",border:"1px solid "+C.border,padding:"14px",fontSize:"13px",lineHeight:"1.7",color:C.navy}});
     qBox.append(h("pre",{style:{whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},atelierQuestions));
     const aTA = h("textarea",{
-      style:{flex:"1",width:"100%",padding:"12px 14px",borderRadius:"10px",border:"2px solid "+C.navy,fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.6",minHeight:"90px"},
+      style:{width:"100%",height:"80px",padding:"10px 12px",borderRadius:"10px",border:"2px solid "+C.navy,fontSize:"13px",color:C.navy,fontFamily:"'DM Sans',sans-serif",background:C.white,resize:"none",outline:"none",lineHeight:"1.6"},
       placeholder:"Vos réponses…"
     });
     aTA.value = atelierAnswers;
