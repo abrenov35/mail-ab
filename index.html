@@ -37,7 +37,8 @@ const URG = {
   moderee:{color:C.lavandeDark,bg:C.lavandeLight,label:"MODÉRÉE"},
   faible:{color:"#2E7D52",bg:"#EAF2EA",label:"FAIBLE"}
 };
-const MODS = ["Plus court","Plus développé","Plus commercial","Plus technique"];
+const MODS_MAIL = ["Plus court","Plus développé","Plus commercial","Plus technique"];
+const MODS_SMS  = ["1 ligne","Plus clair","Plus direct","+ Détail"];
 const MOD_IDS = ["shorter","longer","commercial","technical"];
 
 // ── STATE ──────────────────────────────────────────────────────────────────────
@@ -123,14 +124,16 @@ async function doReply(email, ana, modifier, prev) {
 }
 
 // ── ATELIER PROMPTS ────────────────────────────────────────────────────────────
-const REGLES_SMS = "=== REGLES ===\n- JAMAIS de signature\n- JAMAIS \"Cordialement\" ou variantes\n- JAMAIS de compliments ou formules mielleuses\n- JAMAIS de nom de personne\n- PAS de date ni delai sauf si l'INSTRUCTION PRIORITAIRE en donne une explicitement — dans ce cas tu DOIS l'utiliser mot pour mot\n- Style : court, direct, professionnel, naturel SMS — 1 a 3 lignes MAX\n- Genere UNIQUEMENT le corps du message\n=== FIN DES REGLES ===";
+const REGLES_SMS = "=== REGLES SMS ABSOLUES ===\n- JAMAIS de signature, JAMAIS de prenom, JAMAIS de nom\n- JAMAIS 'Cordialement', 'Bonne journee', 'Bien a vous' ou toute formule de politesse\n- JAMAIS de phrase d'accroche mielleuse ('Bonjour, merci de votre message...')\n- JAMAIS de date, heure, delai chiffre SAUF si l'INSTRUCTION PRIORITAIRE en donne un — dans ce cas utilise-le MOT POUR MOT\n- JAMAIS plus de 3 lignes. 1 a 2 lignes si possible. SMS = court.\n- Ton : direct, professionnel, terrain. Parle comme un chef d'equipe serieux, pas comme un commercial de bureau.\n- Pas de 'nous vous informons que', pas de conditionnel mou. Formules actives, affirmatives.\n- Si c'est une reponse : commence directement par l'information utile. Pas de 'Bonjour,'\n- Contexte : AB RENOV 35, entreprise de renovation a Rennes. Interlocuteurs = clients, sous-traitants, fournisseurs, equipes terrain.\n- Genere UNIQUEMENT le corps du SMS, rien d'autre.\n=== FIN DES REGLES ===";
 
 const REGLES_MAIL = "=== REGLES ===\n- JAMAIS de signature\n- JAMAIS \"Cordialement\" ou variantes\n- JAMAIS de compliments ou formules mielleuses\n- JAMAIS de nom de personne — utiliser : 'nous traitons', 'une equipe', 'une intervention'\n- PAS de date ni delai sauf si l'INSTRUCTION PRIORITAIRE en donne une explicitement — dans ce cas tu DOIS l'utiliser mot pour mot\n- Style : professionnel, direct, commercial, bankable\n- INTERDIT : ecrire l'objet du mail dans la reponse\n- INTERDIT : proposer un devis ou engagement financier\n- Par defaut COURT (3-5 lignes max)\n- Genere UNIQUEMENT le corps de la reponse\n=== FIN DES REGLES ===";
 
 async function doAtelierGuide(texte, type, mode) {
   const isSms = type==="sms";
-  const sys = "Tu es AB MAIL, assistant expert en communication commerciale pour AB RENOV. Tu aides a produire des messages parfaits en posant les bonnes questions AVANT de rediger.";
-  const content = "Analyse ce "+(isSms?"SMS":"mail")+" que je veux "+(mode==="repondre"?"traiter (repondre)":"reformuler")+" :\n\n"+texte+"\n\nPose-moi 1 ou 2 questions COURTES et CIBLEES pour bien comprendre ce que je veux comme reponse. Questions simples, directes. Pas de bla-bla. Format : une question par ligne, commencant par un numero.";
+  const sys = "Tu es AB MAIL, assistant expert en communication pour AB RENOV 35, entreprise de renovation a Rennes. Tu aides a produire des messages parfaits en posant les bonnes questions AVANT de rediger.";
+  const content = isSms
+    ? "Analyse ce SMS que je veux "+(mode==="repondre"?"traiter (repondre)":"reformuler")+" :\n\n"+texte+"\n\nPose-moi 1 ou 2 questions TRES COURTES pour comprendre exactement ce que je veux comme reponse. Questions simples, adaptees au contexte terrain d'une entreprise de renovation. Format : une question par ligne, commencant par un numero."
+    : "Analyse ce mail que je veux "+(mode==="repondre"?"traiter (repondre)":"reformuler")+" :\n\n"+texte+"\n\nPose-moi 1 ou 2 questions COURTES et CIBLEES pour bien comprendre ce que je veux comme reponse. Questions simples, directes. Pas de bla-bla. Format : une question par ligne, commencant par un numero.";
   return callClaude([{role:"user",content}],sys);
 }
 
@@ -152,30 +155,46 @@ async function doAtelierAvecReponses(texte, type, mode, questions, answers) {
 async function doAtelierRepondre(texte, type, modifier, prev) {
   const isSms = type==="sms";
   const regles = isSms ? REGLES_SMS : REGLES_MAIL;
-  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu dois IMPERATIVEMENT respecter les regles qui te seront rappelees dans chaque message.";
-  const mmap = {shorter:"Raccourcis cette reponse (garde les regles)",longer:"Developpe davantage (garde les regles)",commercial:"Angle plus commercial (garde les regles)",technical:"Precisions techniques (garde les regles)"};
+  const sys = isSms
+    ? "Tu es un assistant SMS pour AB RENOV 35, entreprise de renovation a Rennes. Tu rediges des SMS courts, directs, terrain. Tu respectes imperativement les regles. Tu ne depasses JAMAIS 3 lignes."
+    : "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu dois IMPERATIVEMENT respecter les regles.";
+  const mmapSms = {shorter:"Reduis encore, 1 seule ligne si possible",longer:"Developpe legerement mais reste sous 3 lignes",commercial:"Formulation plus engageante, reste court",technical:"Ajoute un detail technique precis, reste court"};
+  const mmapMail = {shorter:"Raccourcis cette reponse (garde les regles)",longer:"Developpe davantage (garde les regles)",commercial:"Angle plus commercial (garde les regles)",technical:"Precisions techniques (garde les regles)"};
+  const mmap = isSms ? mmapSms : mmapMail;
   const consigne = atelierConsigne
     ? "\n\n!!! INSTRUCTION PRIORITAIRE — OBLIGATOIRE — APPLIQUE EN PREMIER AVANT TOUT !!!\n"+atelierConsigne+"\n!!! FIN INSTRUCTION PRIORITAIRE !!!"
     : "";
   const content = consigne
     + "\n\n" + regles
-    + "\n\nTache : Redige une reponse professionnelle a ce "+(isSms?"SMS":"mail")+"."
-    + (modifier&&prev ? "\n\nApplique aussi : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev : "\n\nTexte original :\n"+texte);
+    + (isSms
+      ? "\n\nTache : Redige une REPONSE SMS. Direct. Court. Terrain. Pas de formule de politesse. Commence par l'info utile."
+      : "\n\nTache : Redige une reponse professionnelle a ce mail.")
+    + (modifier&&prev
+      ? "\n\nApplique aussi : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev
+      : "\n\nSMS recu :\n"+texte);
   return callClaude([{role:"user",content}],sys);
 }
 
 async function doAtelierReformuler(texte, type, modifier, prev) {
   const isSms = type==="sms";
   const regles = isSms ? REGLES_SMS : REGLES_MAIL;
-  const sys = "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu dois IMPERATIVEMENT respecter les regles qui te seront rappelees dans chaque message.";
-  const mmap = {shorter:"Raccourcis ce texte",longer:"Developpe davantage",commercial:"Angle plus commercial",technical:"Plus technique et precis"};
+  const sys = isSms
+    ? "Tu es un assistant SMS pour AB RENOV 35, entreprise de renovation a Rennes. Tu reformules des SMS pour les rendre plus courts, directs et professionnels. Ton terrain. Tu respectes imperativement les regles. JAMAIS plus de 3 lignes."
+    : "Tu es AB MAIL, assistant commercial pour AB RENOV, entreprise de renovation. Tu dois IMPERATIVEMENT respecter les regles.";
+  const mmapSms = {shorter:"Reduis encore, 1 seule ligne si possible",longer:"Developpe legerement, reste sous 3 lignes",commercial:"Formulation plus percutante commercialement",technical:"Ajoute un element technique precis"};
+  const mmapMail = {shorter:"Raccourcis ce texte",longer:"Developpe davantage",commercial:"Angle plus commercial",technical:"Plus technique et precis"};
+  const mmap = isSms ? mmapSms : mmapMail;
   const consigne = atelierConsigne
     ? "\n\n!!! INSTRUCTION PRIORITAIRE — OBLIGATOIRE — APPLIQUE EN PREMIER AVANT TOUT !!!\n"+atelierConsigne+"\n!!! FIN INSTRUCTION PRIORITAIRE !!!"
     : "";
   const content = consigne
     + "\n\n" + regles
-    + "\n\nTache : Reformule ce "+(isSms?"SMS":"mail")+" pour le rendre plus professionnel, direct et percutant. Garde le sens exact."
-    + (modifier&&prev ? "\n\nApplique aussi : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev : "\n\nTexte original :\n"+texte);
+    + (isSms
+      ? "\n\nTache : Reformule ce SMS pour le rendre plus direct, plus clair, plus court. Garde le sens. Elimine tout ce qui est inutile."
+      : "\n\nTache : Reformule ce mail pour le rendre plus professionnel, direct et percutant. Garde le sens exact.")
+    + (modifier&&prev
+      ? "\n\nApplique aussi : "+(mmap[modifier]||modifier)+"\n\nTexte a modifier :\n"+prev
+      : "\n\nTexte original :\n"+texte);
   return callClaude([{role:"user",content}],sys);
 }
 
@@ -354,7 +373,7 @@ function renderDetail() {
     }
     // Boutons modif
     const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px",flexShrink:"0"}});
-    MODS.forEach((lbl,i)=>{
+    MODS_MAIL.forEach((lbl,i)=>{
       const id=MOD_IDS[i],isActive=activeMod===id,disabled=replyLoading||loading||!reply;
       grid.append(h("button",{style:{padding:"0 4px",borderRadius:"7px",fontSize:"11px",fontWeight:"600",background:isActive?C.lavande:C.white,border:"1.5px solid "+(isActive?C.lavande:C.border),color:isActive?C.white:C.navy,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,height:"34px"},onclick:()=>{if(!disabled)applyMod(id);}},lbl));
     });
@@ -501,9 +520,10 @@ function renderAtelier() {
     else box.append(h("pre",{style:{fontSize:"13px",lineHeight:isSmsRes?"1.35":"1.8",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},currentResult));
     resWrap.append(box);
 
-    // 4 boutons modif
+    // 4 boutons modif — labels adaptés SMS ou mail
+    const MODS_CURRENT = atelierType==="sms" ? MODS_SMS : MODS_MAIL;
     const grid = h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px"}});
-    MODS.forEach((lbl,i)=>{
+    MODS_CURRENT.forEach((lbl,i)=>{
       const id=MOD_IDS[i],isA=atelierActiveMod===id,dis=atelierLoading||!currentResult;
       grid.append(h("button",{style:{height:"34px",borderRadius:"7px",fontSize:"11px",fontWeight:"700",background:isA?C.lavande:C.white,border:"1.5px solid "+(isA?C.lavandeDark:C.border),color:isA?C.white:C.navy,cursor:dis?"not-allowed":"pointer",opacity:dis?0.4:1},onclick:()=>{if(!dis)applyAtelierMod(id);}},lbl));
     });
@@ -641,3 +661,4 @@ setInterval(loadEmails, 30000);
 </script>
 </body>
 </html>
+
