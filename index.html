@@ -49,6 +49,8 @@ let screen = "list";
 let selected = null;
 let analysis = null;
 let reply = "";
+let replyHistory = [];
+let replyHistoryIndex = -1;
 let loading = false;
 let replyLoading = false;
 let activeMod = null;
@@ -381,6 +383,16 @@ function renderDetail() {
     if (replyLoading) replyBox.append(shimmerBlock(6));
     else if (reply) replyBox.append(h("pre",{style:{fontSize:"13px",lineHeight:"1.8",color:C.navy,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0"}},reply));
     else replyBox.append(h("div",{style:{color:C.muted,fontSize:"13px"}},"Analyse en cours…"));
+
+    // Navigation historique
+    if (replyHistory.length > 1) {
+      const nav = h("div",{style:{display:"flex",alignItems:"center",gap:"8px",justifyContent:"center"}});
+      const prevBtn = h("button",{style:{padding:"6px 14px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:replyHistoryIndex>0?C.white:C.bgsoft,border:"1.5px solid "+(replyHistoryIndex>0?C.navy:C.border),color:replyHistoryIndex>0?C.navy:C.muted,cursor:replyHistoryIndex>0?"pointer":"not-allowed"},onclick:()=>{if(replyHistoryIndex>0){replyHistoryIndex--;reply=replyHistory[replyHistoryIndex];render();}}},"← Préc.");
+      const ctr = h("div",{style:{fontSize:"12px",fontWeight:"700",color:C.navy}},(replyHistoryIndex+1)+" / "+replyHistory.length);
+      const nextBtn = h("button",{style:{padding:"6px 14px",borderRadius:"8px",fontSize:"12px",fontWeight:"600",background:replyHistoryIndex<replyHistory.length-1?C.white:C.bgsoft,border:"1.5px solid "+(replyHistoryIndex<replyHistory.length-1?C.navy:C.border),color:replyHistoryIndex<replyHistory.length-1?C.navy:C.muted,cursor:replyHistoryIndex<replyHistory.length-1?"pointer":"not-allowed"},onclick:()=>{if(replyHistoryIndex<replyHistory.length-1){replyHistoryIndex++;reply=replyHistory[replyHistoryIndex];render();}}},"Suiv. →");
+      nav.append(prevBtn,ctr,nextBtn);
+      p.append(nav);
+    }
     p.append(grid,replyBox);
     content.append(p);
   }
@@ -619,25 +631,25 @@ async function applyAtelierMod(mod) {
 }
 
 function openEmail(email) {
-  selected=email; analysis=null; reply=""; activeMod=null; copied=false; activeTab="reply";
+  selected=email; analysis=null; reply=""; replyHistory=[]; replyHistoryIndex=-1; activeMod=null; copied=false; activeTab="reply";
   screen="detail"; loading=true; render();
   doAnalyze(email).then(ana=>{
     analysis=ana; loading=false; replyLoading=true; render();
     return doReply(email,ana,null,null);
-  }).then(rep=>{ reply=rep; replyLoading=false; render(); })
+  }).then(rep=>{ reply=rep; replyHistory=[rep]; replyHistoryIndex=0; replyLoading=false; render(); })
   .catch(()=>{ analysis={category:"Erreur",summary:"Impossible d'analyser",demand:"-",urgency:"faible",action:"-"}; reply="Une erreur est survenue."; loading=false; replyLoading=false; render(); });
 }
 
 function applyMod(mod) {
   if (!selected||!analysis||!reply) return;
   activeMod=mod; replyLoading=true; render();
-  doReply(selected,analysis,mod,reply).then(rep=>{ reply=rep; replyLoading=false; render(); }).catch(()=>{ replyLoading=false; render(); });
+  doReply(selected,analysis,mod,reply).then(rep=>{ reply=rep; replyHistory.push(rep); replyHistoryIndex=replyHistory.length-1; replyLoading=false; render(); }).catch(()=>{ replyLoading=false; render(); });
 }
 
 function regenerate() {
   if (!selected||!analysis) return;
   activeMod=null; replyLoading=true; render();
-  doReply(selected,analysis,null,null).then(rep=>{ reply=rep; replyLoading=false; render(); }).catch(()=>{ replyLoading=false; render(); });
+  doReply(selected,analysis,null,null).then(rep=>{ reply=rep; replyHistory.push(rep); replyHistoryIndex=replyHistory.length-1; replyLoading=false; render(); }).catch(()=>{ replyLoading=false; render(); });
 }
 
 function doCopy() {
@@ -661,4 +673,5 @@ setInterval(loadEmails, 30000);
 </script>
 </body>
 </html>
+
 
